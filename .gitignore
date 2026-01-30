@@ -1,0 +1,69 @@
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# =====================
+# Virtual Environments
+# =====================
+.venv/
+venv/
+env/
+ENV/
+
+# =====================
+# Packaging / Builds
+# =====================
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# =====================
+# Pytest / Coverage
+# =====================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# =====================
+# Jupyter
+# =====================
+.ipynb_checkpoints/
+
+# =====================
+# Logs
+# =====================
+*.log
+logs/
+
+# =====================
+# Environment / Secrets
+# =====================
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# =====================
+# Editor / IDE
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =====================
+# OS
+# ===========
+
+diff.patch
