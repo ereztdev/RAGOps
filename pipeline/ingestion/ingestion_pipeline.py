@@ -36,45 +36,17 @@ def run_ingestion_pipeline(pdf_path: str) -> dict:
             text = ""
         page_texts.append((i + 1, text.strip()))
 
-    # Build full text and char index -> page_number mapping
-    full_parts = []
-    char_to_page = []
-    for page_num, text in page_texts:
-        full_parts.append(text)
-        char_to_page.extend([page_num] * len(text))
-        full_parts.append("\n")
-        char_to_page.append(page_num)  # newline
-    full_text = "".join(full_parts).rstrip("\n")
-    char_to_page = char_to_page[: len(full_text)]
-
-    if not full_text:
-        return {
-            "document_hash": document_hash,
-            "source_path": path,
-            "chunks": [],
-        }
-
-    # Chunk by character length ~500-800 with overlap ~100
-    chunk_size = 650
-    overlap = 100
-    step = chunk_size - overlap
+    # Page-based chunking: one chunk per page (skip empty pages)
     chunks = []
     chunk_id = 0
-    start = 0
-    while start < len(full_text):
-        end = min(start + chunk_size, len(full_text))
-        segment = full_text[start:end]
-        if segment.strip():
-            page_number = char_to_page[start] if start < len(char_to_page) else 1
+    for page_number, text in page_texts:
+        if text:
             chunk_id += 1
             chunks.append({
                 "chunk_id": chunk_id,
                 "page_number": page_number,
-                "text": segment,
+                "text": text,
             })
-        start += step
-        if step <= 0:
-            break
 
     return {
         "document_hash": document_hash,
