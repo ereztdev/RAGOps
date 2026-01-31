@@ -1,15 +1,25 @@
 """
 Ingestion pipeline: responsible for hashing, parsing, and chunking documents.
+Emits typed Document and Chunk; serializes output using the canonical schema.
 """
-import hashlib
-import os
+from __future__ import annotations
 
+import os
+from pathlib import Path
+from typing import Optional
+
+from core.schema import Chunk, Document, chunk_key, document_id_from_bytes
+from core.serialization import write_ingestion_output
 from pypdf import PdfReader
 
 
-def run_ingestion_pipeline(pdf_path: str) -> dict:
+def run_ingestion_pipeline(
+    pdf_path: str,
+    output_path: Optional[str | Path] = None,
+) -> Document:
     """
-    Ingest a PDF file and return structured chunks with metadata.
+    Ingest a PDF file and return a typed Document with ordered Chunks.
+    If output_path is set, write ingestion_output.json there.
     """
     path = os.path.abspath(pdf_path)
     if not os.path.isfile(path):
@@ -18,7 +28,7 @@ def run_ingestion_pipeline(pdf_path: str) -> dict:
     with open(path, "rb") as f:
         raw = f.read()
 
-    document_hash = hashlib.sha256(raw).hexdigest()
+    document_id = document_id_from_bytes(raw)
 
     try:
         reader = PdfReader(path)
@@ -26,7 +36,7 @@ def run_ingestion_pipeline(pdf_path: str) -> dict:
         raise RuntimeError(f"Failed to read PDF: {pdf_path}") from e
 
     # Extract text per page, minimal normalization (strip only)
-    page_texts = []
+    page_texts: list[tuple[int, str]] = []
     for i, page in enumerate(reader.pages):
         try:
             text = page.extract_text()
@@ -37,22 +47,29 @@ def run_ingestion_pipeline(pdf_path: str) -> dict:
         page_texts.append((i + 1, text.strip()))
 
     # Page-based chunking: one chunk per page (skip empty pages)
-    chunks = []
-    chunk_id = 0
+    chunks: list[Chunk] = []
     for page_number, text in page_texts:
         if text:
-            chunk_id += 1
-            chunks.append({
-                "chunk_id": chunk_id,
-                "page_number": page_number,
-                "text": text,
-            })
+            key = chunk_key(document_id, page_number)
+            chunks.append(
+                Chunk(
+                    chunk_key=key,
+                    document_id=document_id,
+                    page_number=page_number,
+                    text=text,
+                )
+            )
 
-    return {
-        "document_hash": document_hash,
-        "source_path": path,
-        "chunks": chunks,
-    }
+    document = Document(
+        document_id=document_id,
+        source_path=path,
+        chunks=chunks,
+    )
+
+    if output_path is not None:
+        write_ingestion_output(document, output_path)
+
+    return document
 
 
 if __name__ == "__main__":
@@ -61,12 +78,13 @@ if __name__ == "__main__":
         "data/test_pdfs/ragops_gibberish_test_pdf.pdf",
     ]
     for pdf_path in pdf_paths:
-        result = run_ingestion_pipeline(pdf_path)
+        doc = run_ingestion_pipeline(pdf_path)
         print("---", pdf_path)
-        print("Hash:", result["document_hash"])
-        print("Chunks:", len(result["chunks"]))
-        if result["chunks"]:
-            print("First chunk preview:", result["chunks"][0]["text"][:200])
+        print("document_id:", doc.document_id)
+        print("Chunks:", len(doc.chunks))
+        if doc.chunks:
+            print("First chunk key:", doc.chunks[0].chunk_key)
+            print("First chunk preview:", doc.chunks[0].text[:200])
         else:
             print("First chunk preview: (no extractable text)")
         print()
