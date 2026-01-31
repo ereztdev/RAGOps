@@ -14,6 +14,7 @@ from core.schema import (
     Chunk,
     Document,
     IndexVersion,
+    chunk_id_from_components,
     chunk_key,
     document_id_from_bytes,
 )
@@ -64,6 +65,22 @@ class TestStableIdentifiers(unittest.TestCase):
         doc_id = "b" * 64
         self.assertEqual(chunk_key(doc_id, 1), chunk_key(doc_id, 1))
 
+    def test_chunk_id_deterministic(self) -> None:
+        """Same (document_id, source_type, page_number, chunk_index) must yield same chunk_id."""
+        cid1 = chunk_id_from_components("doc1", "pdf", 1, 0)
+        cid2 = chunk_id_from_components("doc1", "pdf", 1, 0)
+        self.assertEqual(cid1, cid2)
+        self.assertEqual(len(cid1), 64)
+        self.assertTrue(all(c in "0123456789abcdef" for c in cid1))
+
+    def test_chunk_id_different_for_different_inputs(self) -> None:
+        """Different inputs must yield different chunk_ids."""
+        base = chunk_id_from_components("d", "pdf", 1, 0)
+        self.assertNotEqual(base, chunk_id_from_components("d", "pdf", 2, 0))
+        self.assertNotEqual(base, chunk_id_from_components("d", "md", 1, 0))
+        self.assertNotEqual(base, chunk_id_from_components("d", "pdf", 1, 1))
+        self.assertNotEqual(base, chunk_id_from_components("e", "pdf", 1, 0))
+
 
 # ---------------------------------------------------------------------------
 # Ingestion output schema
@@ -75,7 +92,7 @@ def _ingestion_schema_keys() -> set[str]:
 
 
 def _chunk_schema_keys() -> set[str]:
-    return {"chunk_key", "document_id", "page_number", "text"}
+    return {"chunk_id", "chunk_key", "document_id", "source_type", "page_number", "chunk_index", "text"}
 
 
 class TestIngestionOutputSchema(unittest.TestCase):

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.schema import Chunk, Document, Embedding
+from core.schema import Chunk, Document, Embedding, chunk_id_from_components
 from pipeline.embedding.embedding_engine import (
     FakeEmbeddingBackend,
     run_embedding_pipeline,
@@ -21,11 +21,22 @@ from pipeline.embedding.embedding_engine import (
 # ---------------------------------------------------------------------------
 
 
-def _make_chunk(chunk_key: str, text: str, document_id: str = "a" * 64, page_number: int = 1) -> Chunk:
+def _make_chunk(
+    chunk_key: str,
+    text: str,
+    document_id: str = "a" * 64,
+    page_number: int = 1,
+    source_type: str = "pdf",
+    chunk_index: int = 0,
+) -> Chunk:
+    chunk_id = chunk_id_from_components(document_id, source_type, page_number, chunk_index)
     return Chunk(
+        chunk_id=chunk_id,
         chunk_key=chunk_key,
         document_id=document_id,
+        source_type=source_type,
         page_number=page_number,
+        chunk_index=chunk_index,
         text=text,
     )
 

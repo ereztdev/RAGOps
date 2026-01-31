@@ -7,8 +7,11 @@ from core.schema import (
     Embedding,
     IndexVersion,
     RetrievalHit,
+    RetrievalResult,
+    chunk_id_from_components,
     chunk_key,
     document_id_from_bytes,
+    embedding_vector_id_from_chunk_and_vector,
 )
 
 __all__ = [
@@ -18,6 +21,9 @@ __all__ = [
     "Embedding",
     "IndexVersion",
     "RetrievalHit",
+    "RetrievalResult",
+    "chunk_id_from_components",
     "chunk_key",
     "document_id_from_bytes",
+    "embedding_vector_id_from_chunk_and_vector",
 ]

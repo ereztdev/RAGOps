@@ -8,7 +8,13 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from core.schema import Chunk, Document, chunk_key, document_id_from_bytes
+from core.schema import (
+    Chunk,
+    Document,
+    chunk_id_from_components,
+    chunk_key,
+    document_id_from_bytes,
+)
 from core.serialization import write_ingestion_output
 from pypdf import PdfReader
 
@@ -29,6 +35,9 @@ def run_ingestion_pipeline(
         raw = f.read()
 
     document_id = document_id_from_bytes(raw)
+    source_type = Path(path).suffix.lower().lstrip(".") or "bin"
+    if source_type not in ("pdf", "md", "txt"):
+        source_type = "pdf" if path.lower().endswith(".pdf") else "bin"
 
     try:
         reader = PdfReader(path)
@@ -47,15 +56,21 @@ def run_ingestion_pipeline(
         page_texts.append((i + 1, text.strip()))
 
     # Page-based chunking: one chunk per page (skip empty pages)
+    # chunk_index within page: 0 for single chunk per page (inputs explicit for chunk_id).
     chunks: list[Chunk] = []
     for page_number, text in page_texts:
         if text:
+            chunk_index = 0
             key = chunk_key(document_id, page_number)
+            cid = chunk_id_from_components(document_id, source_type, page_number, chunk_index)
             chunks.append(
                 Chunk(
+                    chunk_id=cid,
                     chunk_key=key,
                     document_id=document_id,
+                    source_type=source_type,
                     page_number=page_number,
+                    chunk_index=chunk_index,
                     text=text,
                 )
             )

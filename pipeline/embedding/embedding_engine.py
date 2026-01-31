@@ -9,7 +9,12 @@ import struct
 from abc import ABC, abstractmethod
 from typing import Protocol, runtime_checkable
 
-from core.schema import Chunk, Document, Embedding
+from core.schema import (
+    Chunk,
+    Document,
+    Embedding,
+    embedding_vector_id_from_chunk_and_vector,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -75,7 +80,15 @@ class FakeEmbeddingBackend(AbstractEmbeddingBackend):
         for c in chunks:
             seed_bytes = f"{c.chunk_key}:{c.text}".encode("utf-8")
             vector = _deterministic_floats(seed_bytes, self.vector_size)
-            result.append(Embedding(chunk_key=c.chunk_key, vector=vector))
+            eid = embedding_vector_id_from_chunk_and_vector(c.chunk_id, vector)
+            result.append(
+                Embedding(
+                    chunk_key=c.chunk_key,
+                    chunk_id=c.chunk_id,
+                    embedding_vector_id=eid,
+                    vector=vector,
+                )
+            )
         return result
 
 

@@ -4,7 +4,9 @@ Pure data models: no IO, no side effects. All fields explicit and typed.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
+import struct
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -24,6 +26,20 @@ def chunk_key(document_id: str, page_number: int) -> str:
     return f"{document_id}:{page_number}"
 
 
+def chunk_id_from_components(
+    document_id: str,
+    source_type: str,
+    page_number: int,
+    chunk_index: int,
+) -> str:
+    """
+    Deterministic chunk_id from explicit inputs. Hash-based for stability.
+    Inputs (logged at creation): document_id, source_type, page_number, chunk_index.
+    """
+    canonical = f"{document_id}:{source_type}:{page_number}:{chunk_index}"
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 # ---------------------------------------------------------------------------
 # Core data models
 # ---------------------------------------------------------------------------
@@ -32,17 +48,23 @@ def chunk_key(document_id: str, page_number: int) -> str:
 @dataclass(frozen=True)
 class Chunk:
     """One addressable unit of document content (e.g. one page)."""
+    chunk_id: str
     chunk_key: str
     document_id: str
+    source_type: str
     page_number: int
+    chunk_index: int
     text: str
 
     def to_serializable(self) -> dict[str, Any]:
         """Stable dict for JSON: field order consistent."""
         return {
+            "chunk_id": self.chunk_id,
             "chunk_key": self.chunk_key,
             "document_id": self.document_id,
+            "source_type": self.source_type,
             "page_number": self.page_number,
+            "chunk_index": self.chunk_index,
             "text": self.text,
         }
 
@@ -63,15 +85,26 @@ class Document:
         }
 
 
+def embedding_vector_id_from_chunk_and_vector(chunk_id: str, vector: tuple[float, ...]) -> str:
+    """Deterministic embedding_vector_id from chunk_id and vector bytes."""
+    buf = struct.pack(f"{len(vector)}d", *vector)
+    canonical = chunk_id.encode("utf-8") + base64.b64encode(buf)
+    return hashlib.sha256(canonical).hexdigest()
+
+
 @dataclass(frozen=True)
 class Embedding:
     """Structure only: vector + chunk reference. No generation logic."""
     chunk_key: str
+    chunk_id: str
+    embedding_vector_id: str
     vector: tuple[float, ...]
 
     def to_serializable(self) -> dict[str, Any]:
         return {
             "chunk_key": self.chunk_key,
+            "chunk_id": self.chunk_id,
+            "embedding_vector_id": self.embedding_vector_id,
             "vector": list(self.vector),
         }
 
@@ -98,20 +131,42 @@ class IndexVersion:
 
 @dataclass(frozen=True)
 class RetrievalHit:
-    """Structure only: one retrieved chunk with score and metadata."""
-    chunk_key: str
-    score: float
+    """
+    Trace payload for one retrieved chunk. All fields required; no silent defaults.
+    Enables traceability: chunk -> document -> source, and embedding state.
+    """
+    chunk_id: str
     document_id: str
-    page_number: int
-    text: str
+    raw_text: str
+    embedding_vector_id: str
+    index_version: str
+    similarity_score: float
 
     def to_serializable(self) -> dict[str, Any]:
         return {
-            "chunk_key": self.chunk_key,
-            "score": self.score,
+            "chunk_id": self.chunk_id,
             "document_id": self.document_id,
-            "page_number": self.page_number,
-            "text": self.text,
+            "raw_text": self.raw_text,
+            "embedding_vector_id": self.embedding_vector_id,
+            "index_version": self.index_version,
+            "similarity_score": self.similarity_score,
+        }
+
+
+@dataclass
+class RetrievalResult:
+    """Result of a retrieval call. Explicit top_k enforcement and truncation flag."""
+    hits: list[RetrievalHit]
+    index_version: str
+    top_k_requested: int
+    truncated: bool  # True when fewer than top_k_requested returned
+
+    def to_serializable(self) -> dict[str, Any]:
+        return {
+            "hits": [h.to_serializable() for h in self.hits],
+            "index_version": self.index_version,
+            "top_k_requested": self.top_k_requested,
+            "truncated": self.truncated,
         }
 
 
