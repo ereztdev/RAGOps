@@ -84,7 +84,17 @@ def run_ingestion_pipeline(pdf_path: str) -> dict:
 
 
 if __name__ == "__main__":
-    result = run_ingestion_pipeline("data/test_pdfs/ragops_gibberish_test_pdf.pdf")
-    print("Hash:", result["document_hash"])
-    print("Chunks:", len(result["chunks"]))
-    print("First chunk preview:", result["chunks"][0]["text"][:200])
+    pdf_paths = [
+        "data/test_pdfs/ragops_semantic_test_pdf.pdf",
+        "data/test_pdfs/ragops_gibberish_test_pdf.pdf",
+    ]
+    for pdf_path in pdf_paths:
+        result = run_ingestion_pipeline(pdf_path)
+        print("---", pdf_path)
+        print("Hash:", result["document_hash"])
+        print("Chunks:", len(result["chunks"]))
+        if result["chunks"]:
+            print("First chunk preview:", result["chunks"][0]["text"][:200])
+        else:
+            print("First chunk preview: (no extractable text)")
+        print()
