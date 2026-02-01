@@ -172,16 +172,21 @@ class RetrievalResult:
 
 @dataclass
 class AnswerWithCitations:
-    """Structure only: answer plus citation references."""
-    answer: str
-    citation_chunk_keys: list[str] = field(default_factory=list)
+    """
+    Output of grounded inference: answer plus citation references, or refusal.
+    found=True → answer_text + citation_chunk_ids; found=False → refusal_reason required.
+    """
+    answer_text: str | None
+    citation_chunk_ids: list[str] = field(default_factory=list)
     found: bool = True
+    refusal_reason: str | None = None  # REQUIRED when found is False
 
     def to_serializable(self) -> dict[str, Any]:
         return {
-            "answer": self.answer,
-            "citation_chunk_keys": list(self.citation_chunk_keys),
+            "answer_text": self.answer_text,
+            "citation_chunk_ids": list(self.citation_chunk_ids),
             "found": self.found,
+            "refusal_reason": self.refusal_reason,
         }
 
 
