@@ -183,3 +183,61 @@ class AnswerWithCitations:
             "citation_chunk_keys": list(self.citation_chunk_keys),
             "found": self.found,
         }
+
+
+# ---------------------------------------------------------------------------
+# Evaluation (Segment 7): retrieval quality gating
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EvaluationConfig:
+    """Configuration-driven thresholds for evaluation. No hardcoded magic numbers."""
+    min_confidence_score: float  # top similarity_score must be >= this (low_confidence signal)
+    min_alphabetic_ratio: float  # gibberish: ratio of alphabetic chars in text (gibberish_detected)
+    max_entropy: float  # gibberish: max allowed character entropy (gibberish_detected)
+
+
+@dataclass(frozen=True)
+class KnownAnswerFixture:
+    """Expected document_id or chunk_id set for a query (known-answer evaluation)."""
+    expected_chunk_ids: frozenset[str] = field(default_factory=frozenset)
+    expected_document_ids: frozenset[str] = field(default_factory=frozenset)
+
+
+@dataclass(frozen=True)
+class SignalResult:
+    """One evaluation signal: passed (bool) and supporting evidence."""
+    passed: bool
+    details: str | dict[str, Any]
+
+
+@dataclass
+class EvaluationReport:
+    """
+    Stored evaluation report for retrieval quality gating.
+    overall_pass is derived: True only if all mandatory signals pass.
+    """
+    evaluation_id: str
+    index_version: str
+    query_hash: str
+    top_k_requested: int
+    hit_count: int
+    signals: dict[str, SignalResult]
+    overall_pass: bool  # derived: all mandatory signals pass
+    created_at: str  # UTC ISO
+
+    def to_serializable(self) -> dict[str, Any]:
+        return {
+            "evaluation_id": self.evaluation_id,
+            "index_version": self.index_version,
+            "query_hash": self.query_hash,
+            "top_k_requested": self.top_k_requested,
+            "hit_count": self.hit_count,
+            "signals": {
+                name: {"passed": sr.passed, "details": sr.details}
+                for name, sr in self.signals.items()
+            },
+            "overall_pass": self.overall_pass,
+            "created_at": self.created_at,
+        }
