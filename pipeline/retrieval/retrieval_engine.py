@@ -9,6 +9,8 @@ import json
 import logging
 import math
 from dataclasses import dataclass
+from typing import Any
+
 from core.schema import (
     Chunk,
     Document,
@@ -20,6 +22,9 @@ from pipeline.embedding.embedding_engine import EmbeddingBackend
 
 
 logger = logging.getLogger("ragops.retrieval")
+
+# Deterministic float format for serialization (no scientific notation drift).
+_FLOAT_FORMAT = ".17g"
 
 
 # ---------------------------------------------------------------------------
@@ -36,12 +41,84 @@ class IndexEntry:
     embedding_vector_id: str
     vector: tuple[float, ...]
 
+    def to_serializable(self) -> dict[str, Any]:
+        """Stable dict for JSON. Vector as deterministic float strings for byte-identical output."""
+        return {
+            "chunk_id": self.chunk_id,
+            "document_id": self.document_id,
+            "raw_text": self.raw_text,
+            "embedding_vector_id": self.embedding_vector_id,
+            "vector": [format(v, _FLOAT_FORMAT) for v in self.vector],
+        }
+
+    @classmethod
+    def from_serializable(cls, data: dict[str, Any]) -> IndexEntry:
+        """Deserialize from dict. Fails loudly on missing or invalid fields."""
+        required = ("chunk_id", "document_id", "raw_text", "embedding_vector_id", "vector")
+        for key in required:
+            if key not in data:
+                raise ValueError(f"IndexEntry missing required field: {key!r}")
+        chunk_id = data["chunk_id"]
+        document_id = data["document_id"]
+        raw_text = data["raw_text"]
+        embedding_vector_id = data["embedding_vector_id"]
+        raw_vector = data["vector"]
+        if not isinstance(chunk_id, str):
+            raise ValueError(f"IndexEntry chunk_id must be str, got {type(chunk_id).__name__}")
+        if not isinstance(document_id, str):
+            raise ValueError(f"IndexEntry document_id must be str, got {type(document_id).__name__}")
+        if not isinstance(raw_text, str):
+            raise ValueError(f"IndexEntry raw_text must be str, got {type(raw_text).__name__}")
+        if not isinstance(embedding_vector_id, str):
+            raise ValueError(f"IndexEntry embedding_vector_id must be str, got {type(embedding_vector_id).__name__}")
+        if not isinstance(raw_vector, list):
+            raise ValueError(f"IndexEntry vector must be list, got {type(raw_vector).__name__}")
+        try:
+            vector = tuple(float(x) for x in raw_vector)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"IndexEntry vector must be list of numbers: {e}") from e
+        return cls(
+            chunk_id=chunk_id,
+            document_id=document_id,
+            raw_text=raw_text,
+            embedding_vector_id=embedding_vector_id,
+            vector=vector,
+        )
+
 
 @dataclass
 class IndexSnapshot:
     """Immutable snapshot of an index for retrieval. No storage IO."""
     index_version_id: str
     entries: list[IndexEntry]
+
+    def to_serializable(self) -> dict[str, Any]:
+        """Stable dict for JSON. Entries sorted by chunk_id for deterministic ordering."""
+        sorted_entries = sorted(self.entries, key=lambda e: e.chunk_id)
+        return {
+            "index_version_id": self.index_version_id,
+            "entries": [e.to_serializable() for e in sorted_entries],
+        }
+
+    @classmethod
+    def from_serializable(cls, data: dict[str, Any]) -> IndexSnapshot:
+        """Deserialize from dict. Fails loudly on missing or invalid fields."""
+        if "index_version_id" not in data:
+            raise ValueError("IndexSnapshot missing required field: index_version_id")
+        if "entries" not in data:
+            raise ValueError("IndexSnapshot missing required field: entries")
+        index_version_id = data["index_version_id"]
+        if not isinstance(index_version_id, str):
+            raise ValueError(
+                f"IndexSnapshot index_version_id must be str, got {type(index_version_id).__name__}"
+            )
+        if not index_version_id.strip():
+            raise ValueError("IndexSnapshot index_version_id must be non-empty")
+        raw_entries = data["entries"]
+        if not isinstance(raw_entries, list):
+            raise ValueError(f"IndexSnapshot entries must be list, got {type(raw_entries).__name__}")
+        entries = [IndexEntry.from_serializable(item) for item in raw_entries]
+        return cls(index_version_id=index_version_id, entries=entries)
 
 
 def build_index_snapshot(
