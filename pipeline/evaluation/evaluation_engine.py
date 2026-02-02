@@ -235,3 +235,46 @@ def _persist_report(report: EvaluationReport, base_dir: Path) -> None:
     path = base_dir / f"{report.evaluation_id}.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(report.to_serializable(), f, indent=2, sort_keys=True)
+
+
+def load_evaluation_report(path: Path | str) -> EvaluationReport:
+    """
+    Load EvaluationReport from JSON file. Fails loudly on missing file or invalid schema.
+    """
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Evaluation report not found: {path}")
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"Evaluation report root must be dict, got {type(data).__name__}")
+    required = (
+        "evaluation_id",
+        "index_version",
+        "query_hash",
+        "top_k_requested",
+        "hit_count",
+        "signals",
+        "overall_pass",
+        "created_at",
+    )
+    for key in required:
+        if key not in data:
+            raise ValueError(f"Evaluation report missing required field: {key!r}")
+    if not isinstance(data["signals"], dict):
+        raise ValueError(f"Evaluation report signals must be dict, got {type(data['signals']).__name__}")
+    signals: dict[str, SignalResult] = {}
+    for name, raw in data["signals"].items():
+        if not isinstance(raw, dict) or "passed" not in raw or "details" not in raw:
+            raise ValueError(f"Evaluation report signal {name!r} must have passed and details")
+        signals[name] = SignalResult(passed=bool(raw["passed"]), details=raw["details"])
+    return EvaluationReport(
+        evaluation_id=data["evaluation_id"],
+        index_version=data["index_version"],
+        query_hash=data["query_hash"],
+        top_k_requested=int(data["top_k_requested"]),
+        hit_count=int(data["hit_count"]),
+        signals=signals,
+        overall_pass=bool(data["overall_pass"]),
+        created_at=data["created_at"],
+    )
