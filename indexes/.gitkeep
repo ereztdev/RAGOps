@@ -1,0 +1,1 @@
+# Registry and active index are written at runtime (e.g. indexes/registry.json, indexes/active_index.json).

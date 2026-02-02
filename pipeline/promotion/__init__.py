@@ -1,1 +1,51 @@
+"""Index versioning and promotion: registry, active pointer, promote_index. Single source of truth."""
 
+from pipeline.promotion.index_registry import (
+    ActiveIndexInfo,
+    RegistryEntry,
+    REGISTRY_STATUS_CREATED,
+    REGISTRY_STATUS_EVALUATED,
+    REGISTRY_STATUS_PROMOTED,
+    REGISTRY_STATUS_REJECTED,
+    get_entry,
+    get_promoted_entry,
+    load_active_index,
+    load_registry,
+    register_index,
+    resolve_active_index,
+    save_active_index,
+    save_registry,
+    update_entry_status,
+)
+from pipeline.promotion.promoter import (
+    EvaluationFailedError,
+    EvaluationReportMissingError,
+    IndexNotInRegistryError,
+    IndexVersionMismatchError,
+    PromotionError,
+    promote_index,
+)
+
+__all__ = [
+    "ActiveIndexInfo",
+    "RegistryEntry",
+    "REGISTRY_STATUS_CREATED",
+    "REGISTRY_STATUS_EVALUATED",
+    "REGISTRY_STATUS_PROMOTED",
+    "REGISTRY_STATUS_REJECTED",
+    "get_entry",
+    "get_promoted_entry",
+    "load_active_index",
+    "load_registry",
+    "register_index",
+    "resolve_active_index",
+    "save_active_index",
+    "save_registry",
+    "update_entry_status",
+    "EvaluationFailedError",
+    "EvaluationReportMissingError",
+    "IndexNotInRegistryError",
+    "IndexVersionMismatchError",
+    "PromotionError",
+    "promote_index",
+]

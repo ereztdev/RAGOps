@@ -2,17 +2,28 @@
 Grounded inference runner: produce answers only when supported by evaluated retrieval.
 Gates strictly on EvaluationReport.overall_pass; uses only retrieved chunk raw_text as context.
 Deterministic for fixed inputs. No promotion, re-ranking, retrieval, or evaluation internally.
+Inference path that uses the active index: run_inference_using_active_index; refuses when no active index.
 """
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Protocol
 
 from core.schema import (
     AnswerWithCitations,
+    EvaluationConfig,
     EvaluationReport,
     RetrievalResult,
 )
+from pipeline.embedding.embedding_engine import EmbeddingBackend
+from pipeline.evaluation.evaluation_engine import (
+    FixturesMap,
+    evaluate_retrieval,
+)
+from pipeline.promotion.index_registry import resolve_active_index
+from pipeline.retrieval.retrieval_engine import retrieve
+from storage.vector_index_store import load_index
 
 
 # ---------------------------------------------------------------------------
@@ -22,6 +33,7 @@ from core.schema import (
 REFUSAL_NO_RETRIEVAL_HITS = "no_retrieval_hits"
 REFUSAL_EVALUATION_FAILED_PREFIX = "evaluation_failed:"
 REFUSAL_UNSUPPORTED_BY_CONTEXT = "unsupported_by_context"
+REFUSAL_NO_ACTIVE_INDEX = "no_active_index"
 
 
 # ---------------------------------------------------------------------------
@@ -153,3 +165,51 @@ def run_grounded_inference(
         found=True,
         refusal_reason=None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Inference using active index only (enforcement boundary)
+# ---------------------------------------------------------------------------
+
+
+def run_inference_using_active_index(
+    query: str,
+    indexes_dir: Path | str,
+    embedding_backend: EmbeddingBackend,
+    top_k: int,
+    llm: InferenceBackend,
+    evaluation_config: EvaluationConfig,
+    fixtures: FixturesMap | None = None,
+    evaluations_dir: Path | str | None = None,
+) -> AnswerWithCitations:
+    """
+    Run grounded inference using the promoted active index only.
+    Resolves index_version_id and index_path from active_index.json + registry;
+    loads index, runs retrieval, evaluation, then run_grounded_inference.
+    Missing or invalid active index causes refusal (no_active_index); no defaults, no fallbacks.
+    """
+    indexes_dir = Path(indexes_dir)
+    registry_path = indexes_dir / "registry.json"
+    active_index_path = indexes_dir / "active_index.json"
+    try:
+        _index_version_id, index_path = resolve_active_index(registry_path, active_index_path)
+    except (FileNotFoundError, ValueError):
+        return AnswerWithCitations(
+            answer_text=None,
+            citation_chunk_ids=[],
+            found=False,
+            refusal_reason=REFUSAL_NO_ACTIVE_INDEX,
+        )
+    path = Path(index_path)
+    if not path.is_absolute():
+        path = indexes_dir / path
+    index = load_index(path)
+    retrieval_result = retrieve(query, index, embedding_backend, top_k)
+    evaluation_report = evaluate_retrieval(
+        retrieval_result,
+        query,
+        evaluation_config,
+        fixtures=fixtures,
+        evaluations_dir=evaluations_dir,
+    )
+    return run_grounded_inference(query, retrieval_result, evaluation_report, llm)
