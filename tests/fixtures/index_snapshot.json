@@ -1,0 +1,21 @@
+{
+  "entries": [
+    {
+      "chunk_id": "6536e63580255b97b8b6d5f30de3239e98698339a2a8dc0084a0227c3ce52eee",
+      "document_id": "c7e600d99f24cd7b20ed1063fe0fe549d9791c37def73c0daf84d4f9e34e47a1",
+      "embedding_vector_id": "b818fbc35bd8dcf045f0597d130f909166777ead49354a59f993034a0c87ffff",
+      "raw_text": "RAGOps Semantic Test Corpus\nPurpose: semantic retrieval testing using fictional definitions.\nGenerated: 2026-01-31\nGLARB-GLARB (noun): A ceremonial farming tool used by the ancient settlers of planet Jiro\nto cultivate frozen soil.\nLINGLINGDONG (noun): A mystical musical instrument crafted by monks of the Nebulon\nMountains to communicate with migrating clouds.\nFLURBO (noun): A fictional green alien species that thrives on low-temperature planets and\ntrades in luminous crystals.\nZORPLESTONE (noun): A floating mineral believed to store memories of solar storms and used\nas a navigation aid by star sailors.\nQUARMITE (noun): A rare herbal compound consumed by inhabitants of planet Quarm to enhance\nnight vision during lunar eclipses.\nNEBULITE (noun): A synthetic alloy invented by the engineers of Andromeda Outpost for\nconstructing lightweight orbital bridges.\nKRYPTA-BLOOM (noun): A bioluminescent flower that opens only during meteor showers and\nemits harmonic vibrations.\nORBITAL TEAKETTLE (noun): An ancient heating device designed to boil liquids in zero\ngravity using magnetic resonance.\nExample questions: What is GLARB-GLARB? What does NEBULITE describe?",
+      "vector": [
+        "-0.18988033160096052",
+        "0.93640473109502564",
+        "-0.7415514661658329",
+        "0.0011056824592434733",
+        "0.93548320882743363",
+        "-0.61197257862052534",
+        "-0.2290927428887658",
+        "-0.69274859395471799"
+      ]
+    }
+  ],
+  "index_version_id": "regression_v1"
+}
