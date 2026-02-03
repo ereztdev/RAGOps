@@ -3,6 +3,7 @@
 from core.schema import (
     AnswerWithCitations,
     Chunk,
+    ChunkingConfig,
     Document,
     Embedding,
     IndexVersion,
@@ -17,6 +18,7 @@ from core.schema import (
 __all__ = [
     "AnswerWithCitations",
     "Chunk",
+    "ChunkingConfig",
     "Document",
     "Embedding",
     "IndexVersion",

@@ -41,6 +41,24 @@ def chunk_id_from_components(
 
 
 # ---------------------------------------------------------------------------
+# Chunking configuration
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ChunkingConfig:
+    """Configuration for sliding-window chunking."""
+    chunk_size_tokens: int = 400
+    overlap_tokens: int = 100  # 25% of chunk_size_tokens
+
+    def __post_init__(self) -> None:
+        if self.overlap_tokens >= self.chunk_size_tokens:
+            raise ValueError("overlap_tokens must be < chunk_size_tokens")
+        if self.chunk_size_tokens < 50:
+            raise ValueError("chunk_size_tokens must be >= 50")
+
+
+# ---------------------------------------------------------------------------
 # Core data models
 # ---------------------------------------------------------------------------
 
