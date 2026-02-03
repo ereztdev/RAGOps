@@ -141,11 +141,23 @@ def _signal_known_answer_miss(
 
 
 def _signal_hit_count_insufficient(result: RetrievalResult) -> SignalResult:
-    """Fewer hits than top_k_requested."""
+    """
+    Fail only when corpus has enough chunks to satisfy requested_k but returned fewer.
+    effective_k = min(requested_k, corpus_size). Small corpora (corpus_size < requested_k)
+    can pass if retrieval quality is good; large corpora must supply requested_k hits.
+    """
     hit_count = len(result.hits)
-    top_k = result.top_k_requested
-    passed = hit_count >= top_k
-    details = {"hit_count": hit_count, "top_k_requested": top_k}
+    requested_k = result.top_k_requested
+    corpus_size = result.corpus_size
+    effective_k = min(requested_k, corpus_size)
+    # FAIL only when: corpus_size >= requested_k AND returned_hits < requested_k
+    passed = corpus_size < requested_k or hit_count >= requested_k
+    details = {
+        "hit_count": hit_count,
+        "top_k_requested": requested_k,
+        "corpus_size": corpus_size,
+        "effective_k": effective_k,
+    }
     return SignalResult(passed=passed, details=details)
 
 

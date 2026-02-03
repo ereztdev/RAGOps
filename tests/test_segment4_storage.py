@@ -60,6 +60,7 @@ class TestSaveLoadRetrieveIdentity(unittest.TestCase):
         self.assertEqual(result_original.index_version, result_loaded.index_version)
         self.assertEqual(result_original.top_k_requested, result_loaded.top_k_requested)
         self.assertEqual(result_original.truncated, result_loaded.truncated)
+        self.assertEqual(result_original.corpus_size, result_loaded.corpus_size)
         for a, b in zip(result_original.hits, result_loaded.hits):
             self.assertEqual(a.chunk_id, b.chunk_id)
             self.assertEqual(a.document_id, b.document_id)

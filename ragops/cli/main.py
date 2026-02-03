@@ -12,7 +12,12 @@ from pathlib import Path
 
 from core.schema import EvaluationConfig
 from core.serialization import load_ingestion_output
-from pipeline.embedding.embedding_engine import FakeEmbeddingBackend, run_embedding_pipeline
+from pipeline.embedding.embedding_engine import (
+    BgeEmbeddingBackend,
+    FakeEmbeddingBackend,
+    is_test_only_index_version,
+    run_embedding_pipeline,
+)
 from pipeline.evaluation.evaluation_engine import (
     load_evaluation_report,
     evaluate_retrieval,
@@ -27,6 +32,7 @@ from pipeline.promotion.index_registry import (
     get_entry,
     load_registry,
     register_index,
+    resolve_active_index,
     update_entry_status,
 )
 from pipeline.promotion.promoter import (
@@ -74,7 +80,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 
 def cmd_build_index(args: argparse.Namespace) -> int:
-    """build-index --ingestion <path> --index-version <id> --out <index_path>"""
+    """build-index --ingestion <path> --index-version <id> --out <index_path>. Default: BGE backend. Use --use-fake for test-only."""
     out_path = Path(args.out)
     if out_path.exists():
         print(f"build-index error: index file already exists: {out_path}", file=sys.stderr)
@@ -89,7 +95,14 @@ def cmd_build_index(args: argparse.Namespace) -> int:
     if not document.chunks:
         print("build-index error: ingestion has no chunks", file=sys.stderr)
         return 1
-    backend = FakeEmbeddingBackend()
+    use_fake = getattr(args, "use_fake", False)
+    if args.index_version.strip().lower().startswith("fake") and not use_fake:
+        print(
+            "build-index error: index_version_id must not start with 'fake' unless --use-fake is set (test-only)",
+            file=sys.stderr,
+        )
+        return 1
+    backend = FakeEmbeddingBackend() if use_fake else BgeEmbeddingBackend()
     embeddings = run_embedding_pipeline(document, backend)
     snapshot = build_index_snapshot(document, embeddings, args.index_version)
     save_index(snapshot, out_path)
@@ -143,7 +156,7 @@ def cmd_evaluate(args: argparse.Namespace) -> int:
         print("evaluate error: no queries in queries file", file=sys.stderr)
         return 1
     index = load_index(index_path)
-    backend = FakeEmbeddingBackend()
+    backend = FakeEmbeddingBackend() if is_test_only_index_version(index.index_version_id) else BgeEmbeddingBackend()
     config = _eval_config_from_args(args)
     top_k = getattr(args, "top_k", DEFAULT_TOP_K) or DEFAULT_TOP_K
     first_report_id: str | None = None
@@ -203,9 +216,25 @@ def cmd_promote(args: argparse.Namespace) -> int:
 
 
 def cmd_ask(args: argparse.Namespace) -> int:
-    """ask --query "<question>" """
+    """ask --query "<question>". Backend matches active index provenance (BGE or test-only)."""
     indexes_dir = Path(args.indexes_dir)
-    backend = FakeEmbeddingBackend()
+    try:
+        _index_version_id, index_path = resolve_active_index(
+            indexes_dir / "registry.json", indexes_dir / "active_index.json"
+        )
+    except (FileNotFoundError, ValueError):
+        _index_version_id = None
+    if _index_version_id is not None:
+        path = Path(index_path)
+        if not path.is_absolute():
+            path = indexes_dir / path
+        if path.is_file():
+            index = load_index(path)
+            backend = FakeEmbeddingBackend() if is_test_only_index_version(index.index_version_id) else BgeEmbeddingBackend()
+        else:
+            backend = BgeEmbeddingBackend()
+    else:
+        backend = BgeEmbeddingBackend()
     top_k = getattr(args, "top_k", DEFAULT_TOP_K) or DEFAULT_TOP_K
     llm = FakeInferenceBackend()
     result = run_inference_using_active_index(
@@ -245,11 +274,12 @@ def main() -> int:
     p_ingest.set_defaults(func=cmd_ingest)
 
     # build-index
-    p_build = subparsers.add_parser("build-index", help="Build index from ingestion output and register")
+    p_build = subparsers.add_parser("build-index", help="Build index from ingestion output and register (default: BGE backend)")
     _add_indexes_dir(p_build)
     p_build.add_argument("--ingestion", required=True, help="Path to ingestion_output.json")
-    p_build.add_argument("--index-version", required=True, dest="index_version", help="Index version id")
+    p_build.add_argument("--index-version", required=True, dest="index_version", help="Index version id (must not start with 'fake' unless --use-fake)")
     p_build.add_argument("--out", required=True, help="Path to write index file (must not exist)")
+    p_build.add_argument("--use-fake", action="store_true", dest="use_fake", help="Use test-only fake embedding backend (index_version may start with 'fake')")
     p_build.set_defaults(func=cmd_build_index)
 
     # evaluate

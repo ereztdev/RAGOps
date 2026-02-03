@@ -160,6 +160,7 @@ class RetrievalResult:
     index_version: str
     top_k_requested: int
     truncated: bool  # True when fewer than top_k_requested returned
+    corpus_size: int  # Number of chunks in the index at retrieval time (for effective_k semantics)
 
     def to_serializable(self) -> dict[str, Any]:
         return {
@@ -167,6 +168,7 @@ class RetrievalResult:
             "index_version": self.index_version,
             "top_k_requested": self.top_k_requested,
             "truncated": self.truncated,
+            "corpus_size": self.corpus_size,
         }
 
 

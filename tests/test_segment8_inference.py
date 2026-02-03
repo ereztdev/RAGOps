@@ -50,12 +50,14 @@ def _retrieval_result(
     index_version: str = "v1",
     top_k_requested: int = 5,
     truncated: bool = False,
+    corpus_size: int = 1,
 ) -> RetrievalResult:
     return RetrievalResult(
         hits=hits if hits is not None else [_hit()],
         index_version=index_version,
         top_k_requested=top_k_requested,
         truncated=truncated,
+        corpus_size=corpus_size,
     )
 
 

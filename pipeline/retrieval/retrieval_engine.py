@@ -252,11 +252,13 @@ def retrieve(
         hits.append(hit)
 
     truncated = len(hits) < top_k
+    corpus_size = len(index.entries)
     result = RetrievalResult(
         hits=hits,
         index_version=index.index_version_id,
         top_k_requested=top_k,
         truncated=truncated,
+        corpus_size=corpus_size,
     )
 
     # Structured JSON log (machine-parsable)

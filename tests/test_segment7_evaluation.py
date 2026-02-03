@@ -94,6 +94,7 @@ class TestEvaluationIdDeterminism(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         report = evaluate_retrieval(result, "my query", config, evaluations_dir=None)
@@ -115,6 +116,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=True,
+            corpus_size=0,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -128,6 +130,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -139,6 +142,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_confidence_score=0.5)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -154,6 +158,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_confidence_score=0.5)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -168,6 +173,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_alphabetic_ratio=0.5)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -180,6 +186,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_alphabetic_ratio=0.5, max_entropy=5.0)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -193,6 +200,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         fixtures = {
@@ -209,6 +217,7 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         fixtures = {
@@ -223,26 +232,31 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         fixtures = {"other_query": KnownAnswerFixture(expected_chunk_ids=frozenset({"x"}))}
         report = evaluate_retrieval(result, "q", config, fixtures=fixtures, evaluations_dir=None)
         self.assertNotIn(KNOWN_ANSWER_MISS, report.signals)
 
-    def test_hit_count_insufficient_signal_fails_when_fewer_hits_than_top_k(
+    def test_hit_count_insufficient_signal_fails_when_corpus_large_but_few_hits_returned(
         self,
     ) -> None:
+        """corpus_size >= requested_k but returned_hits < requested_k -> FAIL."""
         result = RetrievalResult(
             hits=[_hit()],
             index_version="v1",
             top_k_requested=5,
             truncated=True,
+            corpus_size=5,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
         self.assertFalse(report.signals[HIT_COUNT_INSUFFICIENT].passed)
         self.assertEqual(report.signals[HIT_COUNT_INSUFFICIENT].details["hit_count"], 1)
         self.assertEqual(report.signals[HIT_COUNT_INSUFFICIENT].details["top_k_requested"], 5)
+        self.assertEqual(report.signals[HIT_COUNT_INSUFFICIENT].details["corpus_size"], 5)
+        self.assertEqual(report.signals[HIT_COUNT_INSUFFICIENT].details["effective_k"], 5)
 
     def test_hit_count_insufficient_signal_passes_when_hits_ge_top_k(self) -> None:
         result = RetrievalResult(
@@ -250,10 +264,27 @@ class TestSignalsTriggerIndependently(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=5,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
         self.assertTrue(report.signals[HIT_COUNT_INSUFFICIENT].passed)
+
+    def test_hit_count_insufficient_signal_passes_when_corpus_smaller_than_requested_k(
+        self,
+    ) -> None:
+        """corpus_size < requested_k: 1 chunk, top_k=5 -> pass (quality over count)."""
+        result = RetrievalResult(
+            hits=[_hit()],
+            index_version="v1",
+            top_k_requested=5,
+            truncated=True,
+            corpus_size=1,
+        )
+        config = _config()
+        report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
+        self.assertTrue(report.signals[HIT_COUNT_INSUFFICIENT].passed)
+        self.assertEqual(report.signals[HIT_COUNT_INSUFFICIENT].details["effective_k"], 1)
 
 
 # ---------------------------------------------------------------------------
@@ -268,6 +299,7 @@ class TestOverallPassGating(unittest.TestCase):
             index_version="v1",
             top_k_requested=1,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_confidence_score=0.5, min_alphabetic_ratio=0.3, max_entropy=5.0)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -281,6 +313,7 @@ class TestOverallPassGating(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config(min_confidence_score=0.5)
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -300,6 +333,7 @@ class TestKnownAnswerPassFail(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         fixtures = {
@@ -315,6 +349,7 @@ class TestKnownAnswerPassFail(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         fixtures = {
@@ -337,6 +372,7 @@ class TestEmptyRetrievalOverallFail(unittest.TestCase):
             index_version="v1",
             top_k_requested=5,
             truncated=True,
+            corpus_size=0,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -350,6 +386,7 @@ class TestEmptyRetrievalOverallFail(unittest.TestCase):
             index_version="fake_v1",
             top_k_requested=5,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -372,6 +409,7 @@ class TestEvaluationPersistenceAndSchema(unittest.TestCase):
                 index_version="v1",
                 top_k_requested=1,
                 truncated=False,
+                corpus_size=1,
             )
             config = _config()
             report = evaluate_retrieval(
@@ -390,6 +428,7 @@ class TestEvaluationPersistenceAndSchema(unittest.TestCase):
             index_version="v1",
             top_k_requested=1,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
@@ -412,6 +451,7 @@ class TestEvaluationPersistenceAndSchema(unittest.TestCase):
             index_version="v1",
             top_k_requested=1,
             truncated=False,
+            corpus_size=1,
         )
         config = _config()
         r1 = evaluate_retrieval(result, "fixed query", config, evaluations_dir=None)

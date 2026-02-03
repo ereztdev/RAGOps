@@ -195,6 +195,56 @@ class TestPromoteWithFailedEvaluation(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# build-index: BGE default; reject "fake" unless --use-fake
+# ---------------------------------------------------------------------------
+
+
+class TestBuildIndexBgeDefaultFakeOptIn(unittest.TestCase):
+    def test_build_index_rejects_fake_version_without_use_fake(self) -> None:
+        """index_version starting with 'fake' must be rejected unless --use-fake."""
+        if not SEMANTIC_PDF.exists():
+            self.skipTest(f"fixture not found: {SEMANTIC_PDF}")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            indexes_dir = tmp / "indexes"
+            indexes_dir.mkdir()
+            ingestion_path = tmp / "ingestion.json"
+            index_path = tmp / "index.json"
+            _run_cli(["ingest", "--pdf", str(SEMANTIC_PDF), "--out", str(ingestion_path)])
+            r = _run_cli([
+                "build-index",
+                "--ingestion", str(ingestion_path),
+                "--index-version", "fake_v1",
+                "--out", str(index_path),
+                "--indexes-dir", str(indexes_dir),
+            ])
+            self.assertNotEqual(r.returncode, 0, "build-index must reject fake version without --use-fake")
+            self.assertIn("fake", (r.stderr or "").lower())
+
+    def test_build_index_accepts_fake_version_with_use_fake(self) -> None:
+        """With --use-fake, index_version may start with 'fake' (test-only)."""
+        if not SEMANTIC_PDF.exists():
+            self.skipTest(f"fixture not found: {SEMANTIC_PDF}")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            indexes_dir = tmp / "indexes"
+            indexes_dir.mkdir()
+            ingestion_path = tmp / "ingestion.json"
+            index_path = tmp / "index.json"
+            _run_cli(["ingest", "--pdf", str(SEMANTIC_PDF), "--out", str(ingestion_path)])
+            r = _run_cli([
+                "build-index",
+                "--ingestion", str(ingestion_path),
+                "--index-version", "fake_v1",
+                "--out", str(index_path),
+                "--indexes-dir", str(indexes_dir),
+                "--use-fake",
+            ])
+            self.assertEqual(r.returncode, 0, f"build-index with --use-fake must succeed: {r.stderr}")
+            self.assertTrue(index_path.exists())
+
+
+# ---------------------------------------------------------------------------
 # Repeated runs produce byte-identical artifacts
 # ---------------------------------------------------------------------------
 

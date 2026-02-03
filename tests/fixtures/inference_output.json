@@ -1,6 +1,8 @@
 {
-  "answer_text": null,
-  "citation_chunk_ids": [],
-  "found": false,
-  "refusal_reason": "evaluation_failed: hit_count_insufficient"
+  "answer_text": "RAGOps Semantic Test Corpus\nPurpose: semantic retrieval testing using fictional definitions.",
+  "citation_chunk_ids": [
+    "6536e63580255b97b8b6d5f30de3239e98698339a2a8dc0084a0227c3ce52eee"
+  ],
+  "found": true,
+  "refusal_reason": null
 }
