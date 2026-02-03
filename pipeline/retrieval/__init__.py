@@ -1,5 +1,6 @@
 """Retrieval pipeline: top-k similarity search with trace payload and logging."""
 
+from pipeline.retrieval.bm25_backend import Bm25Backend
 from pipeline.retrieval.retrieval_engine import (
     IndexEntry,
     IndexSnapshot,
@@ -9,6 +10,7 @@ from pipeline.retrieval.retrieval_engine import (
 )
 
 __all__ = [
+    "Bm25Backend",
     "IndexEntry",
     "IndexSnapshot",
     "build_index_snapshot",

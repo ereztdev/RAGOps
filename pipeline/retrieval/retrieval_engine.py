@@ -15,6 +15,7 @@ from core.schema import (
     Chunk,
     Document,
     Embedding,
+    HybridRetrievalConfig,
     RetrievalHit,
     RetrievalResult,
 )
@@ -181,6 +182,28 @@ def _cosine_similarity(a: tuple[float, ...], b: tuple[float, ...]) -> float:
     return dot / (na * nb)
 
 
+def _normalize_scores(scores: list[float]) -> list[float]:
+    """
+    Normalize scores to [0, 1] using min-max normalization.
+
+    Edge cases:
+    - Empty list: return []
+    - Single score or all equal: return [0.5, 0.5, ...]
+    - Normal case: (score - min) / (max - min)
+    """
+    if not scores:
+        return []
+
+    min_score = min(scores)
+    max_score = max(scores)
+
+    if abs(max_score - min_score) < 1e-9:
+        # All scores equal or single score
+        return [0.5] * len(scores)
+
+    return [(s - min_score) / (max_score - min_score) for s in scores]
+
+
 # ---------------------------------------------------------------------------
 # Query chunk for embedding (no protocol change)
 # ---------------------------------------------------------------------------
@@ -214,28 +237,68 @@ def retrieve(
     index: IndexSnapshot,
     backend: EmbeddingBackend,
     top_k: int,
+    hybrid_config: HybridRetrievalConfig | None = None,
 ) -> RetrievalResult:
     """
     Run retrieval: embed query, score all index entries, return top_k hits with full trace.
-    top_k is explicitly enforced; order is strictly by similarity_score descending.
-    If fewer than top_k results exist, returns fewer and truncated=True.
+
+    Scoring modes:
+    - When hybrid_config is None: BGE cosine similarity only (Phase 1 behavior)
+    - When hybrid_config is provided: Merge BGE + BM25 scores with alpha/beta weights
+
+    Args:
+        query: Query string
+        index: IndexSnapshot with entries
+        backend: EmbeddingBackend for query embedding
+        top_k: Number of results to return
+        hybrid_config: Optional hybrid retrieval configuration
+
+    Returns:
+        RetrievalResult with hits sorted by final score descending
     """
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
 
+    # Embed query (always needed for BGE component)
     query_chunk = _query_chunk(query)
     query_embeddings = backend.embed_chunks([query_chunk])
     query_vector = query_embeddings[0].vector
 
-    # Brute-force: deterministic, no ANN randomness
-    scored: list[tuple[float, IndexEntry]] = []
+    # Compute BGE cosine scores
+    bge_scores: list[float] = []
     for entry in index.entries:
         score = _cosine_similarity(entry.vector, query_vector)
-        scored.append((score, entry))
+        bge_scores.append(score)
 
-    # Strict sort by similarity descending; then take first top_k
+    # Compute final scores
+    if hybrid_config is None:
+        # Phase 1 behavior: BGE-only
+        final_scores = bge_scores
+    else:
+        # Phase 2 behavior: BGE + BM25 hybrid
+        from pipeline.retrieval.bm25_backend import Bm25Backend
+
+        corpus = [entry.raw_text for entry in index.entries]
+        bm25 = Bm25Backend(corpus)
+        bm25_scores = bm25.score(query)
+
+        # Normalize both to [0, 1]
+        bge_normalized = _normalize_scores(bge_scores)
+        bm25_normalized = _normalize_scores(bm25_scores)
+
+        # Merge: final = alpha * BGE + beta * BM25
+        final_scores = [
+            hybrid_config.alpha * bg + hybrid_config.beta * bm
+            for bg, bm in zip(bge_normalized, bm25_normalized)
+        ]
+
+    # Sort by final score descending, then chunk_id for determinism
+    scored: list[tuple[float, IndexEntry]] = list(
+        zip(final_scores, index.entries)
+    )
     scored.sort(key=lambda x: (-x[0], x[1].chunk_id))
 
+    # Take top_k
     k = min(top_k, len(scored))
     top_pairs = scored[:k]
 
@@ -247,7 +310,7 @@ def retrieve(
             raw_text=entry.raw_text,
             embedding_vector_id=entry.embedding_vector_id,
             index_version=index.index_version_id,
-            similarity_score=score,
+            similarity_score=score,  # final_score (hybrid or BGE-only)
         )
         hits.append(hit)
 
@@ -261,12 +324,13 @@ def retrieve(
         corpus_size=corpus_size,
     )
 
-    # Structured JSON log (machine-parsable)
+    # Structured JSON log
     query_hash = hashlib.sha256(query.encode("utf-8")).hexdigest()
     log_payload = {
         "query_hash": query_hash,
         "index_version": index.index_version_id,
         "top_k": top_k,
+        "hybrid": hybrid_config is not None,
         "returned_chunk_ids": [h.chunk_id for h in hits],
     }
     logger.info("%s", json.dumps(log_payload, sort_keys=True))
