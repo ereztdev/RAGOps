@@ -87,6 +87,7 @@ LOW_CONFIDENCE = "low_confidence"
 GIBBERISH_DETECTED = "gibberish_detected"
 KNOWN_ANSWER_MISS = "known_answer_miss"
 HIT_COUNT_INSUFFICIENT = "hit_count_insufficient"
+TEST_ONLY_BACKEND = "test_only_backend"
 
 
 def _signal_empty_retrieval(result: RetrievalResult) -> SignalResult:
@@ -153,6 +154,17 @@ def _signal_hit_count_insufficient(result: RetrievalResult) -> SignalResult:
 # ---------------------------------------------------------------------------
 
 
+def _signal_test_only_backend(result: RetrievalResult) -> SignalResult:
+    """Fail when index was built with test-only (fake) backend; such indexes must not pass evaluation."""
+    from pipeline.embedding.embedding_engine import is_test_only_index_version
+    is_test_only = is_test_only_index_version(result.index_version)
+    details = {
+        "message": "index built with test-only (fake) backend; cannot pass evaluation" if is_test_only else "production embedding backend",
+        "index_version": result.index_version,
+    }
+    return SignalResult(passed=not is_test_only, details=details)
+
+
 def _build_signals(
     result: RetrievalResult,
     config: EvaluationConfig,
@@ -166,6 +178,7 @@ def _build_signals(
     if fixture is not None:
         signals[KNOWN_ANSWER_MISS] = _signal_known_answer_miss(result, fixture)
     signals[HIT_COUNT_INSUFFICIENT] = _signal_hit_count_insufficient(result)
+    signals[TEST_ONLY_BACKEND] = _signal_test_only_backend(result)
 
     return signals
 

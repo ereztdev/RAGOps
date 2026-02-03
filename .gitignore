@@ -67,3 +67,8 @@ logs/
 # ===========
 
 diff.patch
+
+# =====================
+# Generated indexes
+# =====================
+indexes/*.json

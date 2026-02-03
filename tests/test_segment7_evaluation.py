@@ -24,6 +24,7 @@ from pipeline.evaluation.evaluation_engine import (
     HIT_COUNT_INSUFFICIENT,
     KNOWN_ANSWER_MISS,
     LOW_CONFIDENCE,
+    TEST_ONLY_BACKEND,
     evaluation_id_from_index_and_query,
     evaluate_retrieval,
     query_hash_from_query,
@@ -341,7 +342,20 @@ class TestEmptyRetrievalOverallFail(unittest.TestCase):
         report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
         self.assertFalse(report.overall_pass)
         self.assertFalse(report.signals[EMPTY_RETRIEVAL].passed)
-        self.assertEqual(report.hit_count, 0)
+
+    def test_fake_index_version_fails_test_only_backend_signal(self) -> None:
+        """Index versions starting with 'fake' must not pass evaluation (test-only backend)."""
+        result = RetrievalResult(
+            hits=[_hit(index_version="fake_v1")],
+            index_version="fake_v1",
+            top_k_requested=5,
+            truncated=False,
+        )
+        config = _config()
+        report = evaluate_retrieval(result, "q", config, evaluations_dir=None)
+        self.assertIn(TEST_ONLY_BACKEND, report.signals)
+        self.assertFalse(report.signals[TEST_ONLY_BACKEND].passed)
+        self.assertFalse(report.overall_pass)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,4 @@
+# Segment 3: real local embedding backend
+sentence-transformers>=2.2.0
+# transformers (via sentence-transformers) requires PIL.Image.Resampling (Pillow 9.1+)
+Pillow>=9.1.0
