@@ -1,0 +1,26 @@
+{
+  "description": "Example queries for RAGOps semantic test PDF",
+  "pdf": "data/test_pdfs/ragops_semantic_test_pdf.pdf",
+  "queries": [
+    {
+      "question": "What is GLARB-GLARB?",
+      "expected_keywords": ["ceremonial", "farming", "tool", "Jiro", "frozen soil"]
+    },
+    {
+      "question": "What does NEBULITE describe?",
+      "expected_keywords": ["synthetic", "alloy", "Andromeda", "orbital bridges"]
+    },
+    {
+      "question": "What is FLURBO?",
+      "expected_keywords": ["alien", "species", "low-temperature", "luminous crystals"]
+    },
+    {
+      "question": "What is the ORBITAL TEAKETTLE used for?",
+      "expected_keywords": ["heating", "boil", "zero gravity", "magnetic resonance"]
+    },
+    {
+      "question": "What is KRYPTA-BLOOM?",
+      "expected_keywords": ["bioluminescent", "flower", "meteor showers", "harmonic vibrations"]
+    }
+  ]
+}
