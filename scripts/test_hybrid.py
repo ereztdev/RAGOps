@@ -23,8 +23,8 @@ result_bge = retrieve(query, index, backend, top_k=3)
 print("BGE-only top 3 chunk_ids:", [h.chunk_id for h in result_bge.hits])
 print("BGE-only top 3 scores:", [h.similarity_score for h in result_bge.hits])
 
-# Hybrid (Phase 2)
-config = HybridRetrievalConfig(alpha=0.7, beta=0.3)
+# Hybrid (Phase 2): RRF merge
+config = HybridRetrievalConfig(rrf_k=60)
 result_hybrid = retrieve(query, index, backend, top_k=3, hybrid_config=config)
 print("\nHybrid top 3 chunk_ids:", [h.chunk_id for h in result_hybrid.hits])
 print("Hybrid top 3 scores:", [h.similarity_score for h in result_hybrid.hits])

@@ -60,17 +60,12 @@ class ChunkingConfig:
 
 @dataclass(frozen=True)
 class HybridRetrievalConfig:
-    """Configuration for hybrid retrieval (BGE semantic + BM25 lexical)."""
-    alpha: float = 0.7  # BGE weight
-    beta: float = 0.3   # BM25 weight
+    """Configuration for hybrid retrieval (BGE semantic + BM25 lexical) via RRF merge."""
+    rrf_k: int = 60  # RRF constant: score = 1/(k + rank_bge) + 1/(k + rank_bm25)
 
     def __post_init__(self) -> None:
-        if not (0.0 <= self.alpha <= 1.0):
-            raise ValueError("alpha must be in [0, 1]")
-        if not (0.0 <= self.beta <= 1.0):
-            raise ValueError("beta must be in [0, 1]")
-        if abs(self.alpha + self.beta - 1.0) > 1e-9:
-            raise ValueError("alpha + beta must equal 1.0")
+        if self.rrf_k < 1:
+            raise ValueError("rrf_k must be >= 1")
 
 
 # ---------------------------------------------------------------------------

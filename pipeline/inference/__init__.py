@@ -1,7 +1,7 @@
 """Grounded inference: answer only when supported by evaluated retrieval."""
 
+from pipeline.inference.backends import FakeInferenceBackend, InferenceBackend
 from pipeline.inference.inference_runner import (
-    FakeInferenceBackend,
     REFUSAL_EVALUATION_FAILED_PREFIX,
     REFUSAL_NO_ACTIVE_INDEX,
     REFUSAL_NO_RETRIEVAL_HITS,
@@ -12,6 +12,7 @@ from pipeline.inference.inference_runner import (
 
 __all__ = [
     "FakeInferenceBackend",
+    "InferenceBackend",
     "REFUSAL_EVALUATION_FAILED_PREFIX",
     "REFUSAL_NO_ACTIVE_INDEX",
     "REFUSAL_NO_RETRIEVAL_HITS",
