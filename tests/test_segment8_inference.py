@@ -295,6 +295,8 @@ class TestFakeInferenceBackend(unittest.TestCase):
 class TestUnsupportedByContext(unittest.TestCase):
     def test_empty_backend_answer_refuses_with_unsupported(self) -> None:
         class EmptyBackend:
+            model_id = "empty"
+
             def generate(self, query: str, context: str) -> str:
                 return ""
 

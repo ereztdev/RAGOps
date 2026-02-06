@@ -2,3 +2,6 @@
 sentence-transformers>=2.2.0
 # transformers (via sentence-transformers) requires PIL.Image.Resampling (Pillow 9.1+)
 Pillow>=9.1.0
+
+# Optional: Ollama inference backend (pip install ollama). Code works without it (--llm fake).
+ollama>=0.1.0

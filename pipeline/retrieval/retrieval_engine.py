@@ -182,26 +182,52 @@ def _cosine_similarity(a: tuple[float, ...], b: tuple[float, ...]) -> float:
     return dot / (na * nb)
 
 
-def _normalize_scores(scores: list[float]) -> list[float]:
+def _scores_to_ranks(scores: list[float], descending: bool = True) -> list[int]:
     """
-    Normalize scores to [0, 1] using min-max normalization.
-
-    Edge cases:
-    - Empty list: return []
-    - Single score or all equal: return [0.5, 0.5, ...]
-    - Normal case: (score - min) / (max - min)
+    Convert scores to 1-based ranks. Ties get the same rank (min rank of the group).
+    Order: same as input (rank[i] = rank of entry i).
     """
-    if not scores:
+    n = len(scores)
+    if n == 0:
         return []
+    # Sort (index, score) by score; then assign rank by position
+    order = sorted(range(n), key=lambda i: scores[i], reverse=descending)
+    ranks = [0] * n
+    r = 1
+    i = 0
+    while i < n:
+        idx = order[i]
+        s = scores[idx]
+        j = i
+        while j < n and scores[order[j]] == s:
+            ranks[order[j]] = r
+            j += 1
+        r += j - i
+        i = j
+    return ranks
 
-    min_score = min(scores)
-    max_score = max(scores)
 
-    if abs(max_score - min_score) < 1e-9:
-        # All scores equal or single score
-        return [0.5] * len(scores)
-
-    return [(s - min_score) / (max_score - min_score) for s in scores]
+def _rrf_merge(
+    bge_scores: list[float],
+    bm25_scores: list[float],
+    k: int = 60,
+) -> list[float]:
+    """
+    Reciprocal Rank Fusion: merge BGE and BM25 rankings into a single score.
+    score[i] = 1/(k + rank_bge[i]) + 1/(k + rank_bm25[i])
+    Higher BGE/BM25 score => lower rank (1 = best). Deterministic for same inputs.
+    """
+    n = len(bge_scores)
+    if n != len(bm25_scores):
+        raise ValueError("bge_scores and bm25_scores must have same length")
+    if n == 0:
+        return []
+    rank_bge = _scores_to_ranks(bge_scores, descending=True)
+    rank_bm25 = _scores_to_ranks(bm25_scores, descending=True)
+    return [
+        1.0 / (k + rank_bge[i]) + 1.0 / (k + rank_bm25[i])
+        for i in range(n)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +270,7 @@ def retrieve(
 
     Scoring modes:
     - When hybrid_config is None: BGE cosine similarity only (Phase 1 behavior)
-    - When hybrid_config is provided: Merge BGE + BM25 scores with alpha/beta weights
+    - When hybrid_config is provided: Merge BGE + BM25 via RRF (rrf_k)
 
     Args:
         query: Query string
@@ -275,22 +301,17 @@ def retrieve(
         # Phase 1 behavior: BGE-only
         final_scores = bge_scores
     else:
-        # Phase 2 behavior: BGE + BM25 hybrid
+        # Hybrid: BGE + BM25 merged via RRF
         from pipeline.retrieval.bm25_backend import Bm25Backend
 
         corpus = [entry.raw_text for entry in index.entries]
         bm25 = Bm25Backend(corpus)
         bm25_scores = bm25.score(query)
-
-        # Normalize both to [0, 1]
-        bge_normalized = _normalize_scores(bge_scores)
-        bm25_normalized = _normalize_scores(bm25_scores)
-
-        # Merge: final = alpha * BGE + beta * BM25
-        final_scores = [
-            hybrid_config.alpha * bg + hybrid_config.beta * bm
-            for bg, bm in zip(bge_normalized, bm25_normalized)
-        ]
+        final_scores = _rrf_merge(
+            bge_scores,
+            bm25_scores,
+            k=hybrid_config.rrf_k,
+        )
 
     # Sort by final score descending, then chunk_id for determinism
     scored: list[tuple[float, IndexEntry]] = list(

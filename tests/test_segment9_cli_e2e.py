@@ -107,6 +107,7 @@ class TestFullFlowE2E(unittest.TestCase):
                 "--query", ask_query,
                 "--indexes-dir", str(indexes_dir),
                 "--top-k", "1",
+                "--llm", "fake",
                 "--min-confidence", "0.25",
             ])
             self.assertEqual(r.returncode, 0, f"ask failed: {r.stderr}")
@@ -141,6 +142,7 @@ class TestAskBeforePromoteRefusal(unittest.TestCase):
                 "ask",
                 "--query", "any question",
                 "--indexes-dir", str(indexes_dir),
+                "--llm", "fake",
             ])
             self.assertNotEqual(r.returncode, 0, "ask must exit non-zero when no active index")
             self.assertIn("no_active_index", r.stderr or r.stdout)

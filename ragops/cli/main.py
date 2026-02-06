@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+_inference_logger = logging.getLogger("ragops.inference")
 
 from core.schema import EvaluationConfig
 from core.serialization import load_ingestion_output
@@ -23,10 +26,11 @@ from pipeline.evaluation.evaluation_engine import (
     evaluate_retrieval,
 )
 from pipeline.ingestion.ingestion_pipeline import run_ingestion_pipeline
-from pipeline.inference.inference_runner import (
+from pipeline.inference.backends import (
     FakeInferenceBackend,
-    run_inference_using_active_index,
+    OllamaInferenceBackend,
 )
+from pipeline.inference.inference_runner import run_inference_using_active_index
 from pipeline.promotion.index_registry import (
     REGISTRY_STATUS_EVALUATED,
     get_entry,
@@ -216,7 +220,7 @@ def cmd_promote(args: argparse.Namespace) -> int:
 
 
 def cmd_ask(args: argparse.Namespace) -> int:
-    """ask --query "<question>". Backend matches active index provenance (BGE or test-only)."""
+    """ask --query "<question>" [--llm fake|ollama] [--model <ollama_model>]. Backend matches active index provenance (BGE or test-only)."""
     indexes_dir = Path(args.indexes_dir)
     try:
         _index_version_id, index_path = resolve_active_index(
@@ -236,7 +240,23 @@ def cmd_ask(args: argparse.Namespace) -> int:
     else:
         backend = BgeEmbeddingBackend()
     top_k = getattr(args, "top_k", DEFAULT_TOP_K) or DEFAULT_TOP_K
-    llm = FakeInferenceBackend()
+
+    llm_name = getattr(args, "llm", "ollama") or "ollama"
+    if llm_name == "fake":
+        llm = FakeInferenceBackend()
+        _inference_logger.info("backend_selected backend=fake model_id=%s", llm.model_id)
+    elif llm_name == "ollama":
+        model = getattr(args, "model", "llama3.1:8b") or "llama3.1:8b"
+        try:
+            llm = OllamaInferenceBackend(model=model)
+            _inference_logger.info("backend_selected backend=ollama model_id=%s", llm.model_id)
+        except ImportError as e:
+            print(f"ask error: {e}", file=sys.stderr)
+            return 1
+    else:
+        print(f"ask error: unsupported --llm {llm_name!r}", file=sys.stderr)
+        return 1
+
     result = run_inference_using_active_index(
         args.query,
         indexes_dir,
@@ -306,6 +326,8 @@ def main() -> int:
     _add_indexes_dir(p_ask)
     p_ask.add_argument("--query", required=True, help="Question to answer")
     p_ask.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, dest="top_k", help=f"Top-k for retrieval (default: {DEFAULT_TOP_K})")
+    p_ask.add_argument("--llm", choices=["fake", "ollama"], default="ollama", help="Inference backend (default: ollama)")
+    p_ask.add_argument("--model", default="llama3.1:8b", help="Ollama model name when --llm ollama (default: llama3.1:8b)")
     p_ask.add_argument("--min-confidence", type=float, default=None, dest="min_confidence", help="Min top similarity score (default: 0.5)")
     p_ask.set_defaults(func=cmd_ask)
 

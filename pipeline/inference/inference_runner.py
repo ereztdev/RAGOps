@@ -6,9 +6,7 @@ Inference path that uses the active index: run_inference_using_active_index; ref
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
-from typing import Protocol
 
 from core.schema import (
     AnswerWithCitations,
@@ -21,6 +19,7 @@ from pipeline.evaluation.evaluation_engine import (
     FixturesMap,
     evaluate_retrieval,
 )
+from pipeline.inference.backends.base import FakeInferenceBackend, InferenceBackend
 from pipeline.promotion.index_registry import resolve_active_index
 from pipeline.retrieval.retrieval_engine import retrieve
 from storage.vector_index_store import load_index
@@ -34,53 +33,6 @@ REFUSAL_NO_RETRIEVAL_HITS = "no_retrieval_hits"
 REFUSAL_EVALUATION_FAILED_PREFIX = "evaluation_failed:"
 REFUSAL_UNSUPPORTED_BY_CONTEXT = "unsupported_by_context"
 REFUSAL_NO_ACTIVE_INDEX = "no_active_index"
-
-
-# ---------------------------------------------------------------------------
-# Inference backend abstraction
-# ---------------------------------------------------------------------------
-
-
-class InferenceBackend(Protocol):
-    """Interface for generating answers from query and context. No inference in this module beyond backend call."""
-
-    def generate(self, query: str, context: str) -> str:
-        """Produce answer text from query and assembled context. Deterministic when backend is deterministic."""
-        ...
-
-
-class FakeInferenceBackend:
-    """
-    Deterministic, test-only backend. Returns first sentence from context that overlaps query terms.
-    MUST NOT hallucinate: only returns text present in context.
-    """
-
-    def generate(self, query: str, context: str) -> str:
-        if not context.strip():
-            return ""
-        query_terms = {t.lower() for t in re.findall(r"\w+", query) if len(t) > 1}
-        if not query_terms:
-            return _first_sentence(context)
-        sentences = re.split(r"[.!?]\s+", context)
-        for sent in sentences:
-            sent_lower = sent.lower()
-            if any(term in sent_lower for term in query_terms):
-                sent = sent.strip()
-                if not sent.endswith((".", "!", "?")):
-                    sent += "."
-                return sent
-        return _first_sentence(context)
-
-
-def _first_sentence(text: str) -> str:
-    """First sentence of text, or full text if no sentence boundary. Deterministic."""
-    text = text.strip()
-    if not text:
-        return ""
-    match = re.search(r"^[^.!?]*[.!?]?", text)
-    if match:
-        return match.group(0).strip() or text
-    return text
 
 
 # ---------------------------------------------------------------------------
