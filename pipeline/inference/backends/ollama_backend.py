@@ -2,6 +2,14 @@
 Ollama inference backend: real LLM via local Ollama (Llama 3.1 8B default).
 Optional dependency: clear error on instantiation if ollama package is missing.
 Deterministic when temperature=0.
+
+Performance note (why first run is slow, later runs faster):
+- First request after install or after Ollama restart loads the model into memory
+  (cold start), which can take ~1–2 minutes for an 8B model. Subsequent requests
+  use the already-loaded model (warm), typically 15–30 seconds depending on
+  context length and hardware.
+- To speed up: use a smaller model (e.g. llama3.2:3b), ensure Ollama has enough
+  RAM/VRAM, or keep Ollama running so the model stays loaded between asks.
 """
 from __future__ import annotations
 

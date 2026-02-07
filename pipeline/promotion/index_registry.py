@@ -174,6 +174,39 @@ def register_index(
     save_registry(path, entries)
 
 
+def register_or_replace_index(
+    path: Path | str,
+    index_version_id: str,
+    index_path: str,
+    created_at: str,
+    notes: str | None = None,
+) -> None:
+    """
+    Register index version, or replace existing entry (same index_version_id) with new path/created_at.
+    Use for idempotent re-builds (e.g. ragops run). Replaced entry is reset to status=created,
+    evaluation_report_id=None.
+    """
+    path = Path(path)
+    entries = load_registry(path) if path.is_file() else []
+    new_entry = RegistryEntry(
+        index_version_id=index_version_id,
+        created_at=created_at,
+        index_path=index_path,
+        evaluation_report_id=None,
+        status=REGISTRY_STATUS_CREATED,
+        notes=notes,
+    )
+    existing = get_entry(entries, index_version_id)
+    if existing is not None:
+        new_entries = [
+            new_entry if e.index_version_id == index_version_id else e
+            for e in entries
+        ]
+    else:
+        new_entries = entries + [new_entry]
+    save_registry(path, new_entries)
+
+
 def update_entry_status(
     path: Path | str,
     index_version_id: str,

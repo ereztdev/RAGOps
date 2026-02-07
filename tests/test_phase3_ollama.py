@@ -173,3 +173,22 @@ class TestOllamaBackendMocked(unittest.TestCase):
                 out = backend.generate("q", "ctx")
                 self.assertEqual(out, "")
                 self.assertEqual(mock_instance.chat.call_count, 2)
+
+    def test_generate_retries_once_on_connection_error_then_returns_empty(self) -> None:
+        """When Ollama is not running, ConnectionError is caught, we retry once, then return empty (refusal path)."""
+        with mock.patch("pipeline.inference.backends.ollama_backend._OLLAMA_AVAILABLE", True):
+            with mock.patch(
+                "pipeline.inference.backends.ollama_backend.OllamaClient",
+                create=True,
+            ) as MockClient:
+                mock_instance = mock.MagicMock()
+                mock_instance.chat.side_effect = [
+                    ConnectionError("Failed to connect to Ollama"),
+                    ConnectionError("Failed to connect to Ollama"),
+                ]
+                MockClient.return_value = mock_instance
+                from pipeline.inference.backends.ollama_backend import OllamaInferenceBackend
+                backend = OllamaInferenceBackend(model="llama3.1:8b")
+                out = backend.generate("q", "ctx")
+                self.assertEqual(out, "")
+                self.assertEqual(mock_instance.chat.call_count, 2)

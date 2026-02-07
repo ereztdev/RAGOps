@@ -124,8 +124,14 @@ class BgeEmbeddingBackend(AbstractEmbeddingBackend):
     embedding_model: str = BGE_EMBEDDING_MODEL_ID
 
     def __init__(self) -> None:
-        from sentence_transformers import SentenceTransformer
-        self._model = SentenceTransformer(BGE_BASE_MODEL_ID)
+        import logging
+        import warnings
+        logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*unauthenticated.*", category=UserWarning)
+            warnings.filterwarnings("ignore", message=".*HF_TOKEN.*", category=UserWarning)
+            from sentence_transformers import SentenceTransformer
+            self._model = SentenceTransformer(BGE_BASE_MODEL_ID)
 
     def embed_chunks(self, chunks: list[Chunk]) -> list[Embedding]:
         if not chunks:

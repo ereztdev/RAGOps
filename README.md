@@ -35,24 +35,32 @@ Phase 2 complete. Hybrid retrieval (BGE embeddings + BM25 keyword search) is wor
 # Clone and install
 git clone https://github.com/ereztdev/RAGOps.git
 cd RAGOps
-pip install -r requirements.txt
+pip install -e .   # or: pip install .  (installs the ragops command)
 
-# Ingest a PDF
+# If ragops is not found, ensure ~/.local/bin is on your PATH, or use:
+#   python -m ragops.cli <command> ...
+
+# Ingest a PDF (default out: indexes/ingestion.json)
+ragops ingest --pdf data/test_pdfs/ragops_semantic_test_pdf.pdf
+# Or with explicit out:
 python -m ragops.cli ingest --pdf data/test_pdfs/ragops_semantic_test_pdf.pdf --out ingestion.json
 
-# Build index
+# Build index (default ingestion/out under indexes/)
 mkdir -p indexes
-python -m ragops.cli build-index --ingestion ingestion.json --index-version v1 --out indexes/v1.json --indexes-dir indexes
+ragops build-index --index-version v1 --overwrite
 
-# Evaluate retrieval quality
+# Evaluate retrieval quality (default out: evaluations/)
 echo '["What is GLARB-GLARB?", "What does NEBULITE describe?"]' > queries.json
-python -m ragops.cli evaluate --index-version v1 --queries queries.json --out evaluations --indexes-dir indexes --min-confidence 0.3
+ragops evaluate --index-version v1 --queries queries.json --min-confidence 0.3
 
 # Promote index (requires passing evaluation)
-python -m ragops.cli promote --index-version v1 --evaluation evaluations/<evaluation_id>.json --indexes-dir indexes
+ragops promote --index-version v1 --evaluation evaluations/<evaluation_id>.json
 
-# Ask questions
-python -m ragops.cli ask --query "What is GLARB-GLARB?" --indexes-dir indexes
+# Ask questions (default LLM: Ollama)
+ragops ask --query "What is GLARB-GLARB?"
+
+# Or run E2E: ingest + build, then one question
+ragops run --pdf data/test_pdfs/ragops_semantic_test_pdf.pdf
 ```
 
 ## Architecture
@@ -103,13 +111,18 @@ core/               Schema, serialization
 
 | Command | Purpose |
 |---------|---------|
-| `ingest` | Parse PDF into chunks |
-| `build-index` | Embed chunks and create index |
-| `evaluate` | Score retrieval quality |
+| `ingest` | Parse PDF into chunks (default out: `indexes/ingestion.json`) |
+| `build-index` | Embed chunks and create index (default in/out under `indexes/`; use `--overwrite` for idempotent re-run) |
+| `evaluate` | Score retrieval quality (default out: `evaluations/`) |
 | `promote` | Mark index as active (requires passing eval) |
-| `ask` | Query the active index |
+| `ask` | Query the active index (default LLM: Ollama) |
+| `run` | E2E: ingest + build, then one question → evaluate, promote, ask (colored terminal) |
 
 Run `python -m ragops.cli <command> --help` for options.
+
+### Ollama performance
+
+The first request after starting Ollama (or after a long idle) loads the model into memory (**cold start**), which can take ~1–2 minutes for an 8B model. Later requests use the already-loaded model (**warm**), typically 15–30 seconds depending on context length and hardware. To speed up: use a smaller model (e.g. `--model llama3.2:3b`), ensure Ollama has enough RAM/VRAM, or keep Ollama running so the model stays loaded between asks.
 
 ## Tests
 
