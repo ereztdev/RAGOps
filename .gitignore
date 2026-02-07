@@ -73,6 +73,8 @@ diff.patch
 # =====================
 indexes/*.json
 evaluations/
+ingestion.json
+queries.json
 
 # =====================
 # Example generated artifacts (not tracked)

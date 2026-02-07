@@ -14,7 +14,7 @@ from pathlib import Path
 _inference_logger = logging.getLogger("ragops.inference")
 
 from core.schema import EvaluationConfig
-from core.serialization import load_ingestion_output
+from core.serialization import ingestion_output_to_dict, load_ingestion_output
 from pipeline.embedding.embedding_engine import (
     BgeEmbeddingBackend,
     FakeEmbeddingBackend,
@@ -22,8 +22,8 @@ from pipeline.embedding.embedding_engine import (
     run_embedding_pipeline,
 )
 from pipeline.evaluation.evaluation_engine import (
-    load_evaluation_report,
     evaluate_retrieval,
+    load_evaluation_report,
 )
 from pipeline.ingestion.ingestion_pipeline import run_ingestion_pipeline
 from pipeline.inference.backends import (
@@ -36,6 +36,7 @@ from pipeline.promotion.index_registry import (
     get_entry,
     load_registry,
     register_index,
+    register_or_replace_index,
     resolve_active_index,
     update_entry_status,
 )
@@ -52,6 +53,18 @@ DEFAULT_TOP_K = 5
 DEFAULT_MIN_CONFIDENCE = 0.5
 DEFAULT_MIN_ALPHABETIC_RATIO = 0.5
 DEFAULT_MAX_ENTROPY = 5.0
+
+# Terminal colors (only when stdout is a TTY)
+def _color(code: str) -> str:
+    return f"\033[{code}m" if sys.stdout.isatty() else ""
+
+
+C_RESET = _color("0")
+C_GREEN = _color("32")
+C_RED = _color("31")
+C_YELLOW = _color("33")
+C_CYAN = _color("36")
+C_DIM = _color("2")
 
 
 def _eval_config_from_args(args: argparse.Namespace) -> EvaluationConfig:
@@ -70,29 +83,57 @@ def _created_at_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-def cmd_ingest(args: argparse.Namespace) -> int:
-    """ingest --pdf <path> [--out <ingestion_output.json>]"""
+def _relative_path_from_cwd(file_path: str | Path) -> Path:
+    """Return path relative to cwd if under cwd, else absolute."""
+    p = Path(file_path).resolve()
+    cwd = Path.cwd()
     try:
-        doc = run_ingestion_pipeline(args.pdf, output_path=args.out if args.out else None)
+        return p.relative_to(cwd)
+    except ValueError:
+        return p
+
+
+def _default_ingestion_path(indexes_dir: str | Path) -> Path:
+    """Default path for ingestion output under indexes_dir (idempotent default)."""
+    return Path(indexes_dir) / "ingestion.json"
+
+
+def cmd_ingest(args: argparse.Namespace) -> int:
+    """ingest --pdf <path> [--out <ingestion_output.json>]. Default --out is indexes_dir/ingestion.json for idempotent pipeline."""
+    out_path = args.out if args.out else _default_ingestion_path(args.indexes_dir)
+    try:
+        doc = run_ingestion_pipeline(args.pdf, output_path=str(out_path))
     except (FileNotFoundError, RuntimeError) as e:
         print(f"ingest error: {e}", file=sys.stderr)
         return 1
     if not doc.chunks:
         print("ingest error: PDF produced no extractable text (empty extract)", file=sys.stderr)
         return 1
+
+    result = ingestion_output_to_dict(doc)
+    print(json.dumps(result, sort_keys=True, indent=2, ensure_ascii=False))
+
+    out_rel = _relative_path_from_cwd(out_path)
+    print(f"\nOutput written to (relative to cwd): {out_rel}")
     return 0
 
 
+def _default_index_path(indexes_dir: str | Path, index_version: str) -> Path:
+    """Default path for index file under indexes_dir (idempotent default)."""
+    return Path(indexes_dir) / f"{index_version}.json"
+
+
 def cmd_build_index(args: argparse.Namespace) -> int:
-    """build-index --ingestion <path> --index-version <id> --out <index_path>. Default: BGE backend. Use --use-fake for test-only."""
-    out_path = Path(args.out)
-    if out_path.exists():
-        print(f"build-index error: index file already exists: {out_path}", file=sys.stderr)
-        return 1
+    """build-index --ingestion <path> --index-version <id> [--out <index_path>]. Default --out is indexes_dir/<index_version>.json. Use --overwrite to replace existing. Default: BGE backend. Use --use-fake for test-only."""
     indexes_dir = Path(args.indexes_dir)
+    ingestion_path = args.ingestion if args.ingestion is not None else str(indexes_dir / "ingestion.json")
+    out_path = Path(args.out) if args.out is not None else _default_index_path(indexes_dir, args.index_version)
+    if out_path.exists() and not getattr(args, "overwrite", False):
+        print(f"build-index error: index file already exists: {out_path} (use --overwrite to replace)", file=sys.stderr)
+        return 1
     registry_path = indexes_dir / "registry.json"
     try:
-        document = load_ingestion_output(args.ingestion)
+        document = load_ingestion_output(ingestion_path)
     except (FileNotFoundError, ValueError) as e:
         print(f"build-index error: {e}", file=sys.stderr)
         return 1
@@ -109,7 +150,7 @@ def cmd_build_index(args: argparse.Namespace) -> int:
     backend = FakeEmbeddingBackend() if use_fake else BgeEmbeddingBackend()
     embeddings = run_embedding_pipeline(document, backend)
     snapshot = build_index_snapshot(document, embeddings, args.index_version)
-    save_index(snapshot, out_path)
+    save_index(snapshot, out_path)  # out_path is Path
     created_at = _created_at_utc()
     try:
         register_index(
@@ -125,10 +166,10 @@ def cmd_build_index(args: argparse.Namespace) -> int:
 
 
 def cmd_evaluate(args: argparse.Namespace) -> int:
-    """evaluate --index-version <id> --queries <queries.json> --out <evaluation_path>"""
+    """evaluate --index-version <id> --queries <queries.json> [--out <evaluation_dir>]. Default --out is evaluations/ for idempotent pipeline."""
     indexes_dir = Path(args.indexes_dir)
     registry_path = indexes_dir / "registry.json"
-    out_dir = Path(args.out)
+    out_dir = Path(args.out)  # default set in parser
     if not registry_path.is_file():
         print(f"evaluate error: registry not found: {registry_path}", file=sys.stderr)
         return 1
@@ -276,6 +317,126 @@ def cmd_ask(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """E2E run: ingest + build index in one step, then one question → evaluate, promote, ask (Ollama). Colored terminal output."""
+    indexes_dir = Path(args.indexes_dir)
+    evaluations_dir = Path(getattr(args, "evaluations_dir", None) or DEFAULT_EVALUATIONS_DIR)
+    index_version = getattr(args, "index_version", "v1") or "v1"
+    ingestion_path = indexes_dir / "ingestion.json"
+    index_path = indexes_dir / f"{index_version}.json"
+    registry_path = indexes_dir / "registry.json"
+    active_index_path = indexes_dir / "active_index.json"
+
+    # Step 1: Ingest
+    try:
+        doc = run_ingestion_pipeline(args.pdf, output_path=str(ingestion_path))
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"{C_RED}ingest error: {e}{C_RESET}", file=sys.stderr)
+        return 1
+    if not doc.chunks:
+        print(f"{C_RED}ingest error: PDF produced no extractable text (empty extract){C_RESET}", file=sys.stderr)
+        return 1
+
+    # Step 1: Build index (overwrite if exists for idempotent run)
+    try:
+        document = load_ingestion_output(str(ingestion_path))
+    except (FileNotFoundError, ValueError) as e:
+        print(f"{C_RED}build-index error: {e}{C_RESET}", file=sys.stderr)
+        return 1
+    use_fake = getattr(args, "use_fake", False)
+    if index_version.strip().lower().startswith("fake") and not use_fake:
+        print(
+            f"{C_RED}build-index error: index_version must not start with 'fake' unless --use-fake{C_RESET}",
+            file=sys.stderr,
+        )
+        return 1
+    backend_emb = FakeEmbeddingBackend() if use_fake else BgeEmbeddingBackend()
+    embeddings = run_embedding_pipeline(document, backend_emb)
+    snapshot = build_index_snapshot(document, embeddings, index_version)
+    save_index(snapshot, index_path)
+    created_at = _created_at_utc()
+    try:
+        register_or_replace_index(
+            registry_path,
+            index_version_id=index_version,
+            index_path=str(index_path.resolve()),
+            created_at=created_at,
+        )
+    except ValueError as e:
+        print(f"{C_RED}build-index error: {e}{C_RESET}", file=sys.stderr)
+        return 1
+
+    print(f"{C_GREEN}Index ready.{C_RESET} index_version={index_version!r} path={_relative_path_from_cwd(index_path)}")
+
+    # Step 2: One question
+    try:
+        prompt_text = f"{C_YELLOW}Ask a question (or Enter to exit):{C_RESET} "
+        question = input(prompt_text).strip()
+    except EOFError:
+        return 0
+    if not question:
+        return 0
+
+    top_k = getattr(args, "top_k", DEFAULT_TOP_K) or DEFAULT_TOP_K
+    config = _eval_config_from_args(args)
+    index = load_index(index_path)
+    retrieval_result = retrieve(question, index, backend_emb, top_k)
+    report = evaluate_retrieval(retrieval_result, question, config, evaluations_dir=evaluations_dir)
+
+    if not report.overall_pass:
+        print(f"{C_RED}Evaluation did not pass for this query. Refusing to promote or ask.{C_RESET}", file=sys.stderr)
+        return 1
+
+    try:
+        update_entry_status(
+            registry_path,
+            index_version,
+            REGISTRY_STATUS_EVALUATED,
+            evaluation_report_id=report.evaluation_id,
+        )
+    except ValueError as e:
+        print(f"{C_RED}evaluate error: {e}{C_RESET}", file=sys.stderr)
+        return 1
+
+    try:
+        promote_index(index_version, report, registry_path, active_index_path)
+    except (EvaluationFailedError, Exception) as e:
+        print(f"{C_RED}promote error: {e}{C_RESET}", file=sys.stderr)
+        return 1
+
+    llm_name = getattr(args, "llm", "ollama") or "ollama"
+    if llm_name == "fake":
+        llm = FakeInferenceBackend()
+    elif llm_name == "ollama":
+        model = getattr(args, "model", "llama3.1:8b") or "llama3.1:8b"
+        try:
+            llm = OllamaInferenceBackend(model=model)
+        except ImportError as e:
+            print(f"{C_RED}ask error: {e}{C_RESET}", file=sys.stderr)
+            return 1
+    else:
+        print(f"{C_RED}ask error: unsupported --llm {llm_name!r}{C_RESET}", file=sys.stderr)
+        return 1
+
+    result = run_inference_using_active_index(
+        question,
+        indexes_dir,
+        backend_emb,
+        top_k,
+        llm,
+        config,
+        evaluations_dir=None,
+    )
+    if result.found:
+        print(f"{C_GREEN}{result.answer_text or ''}{C_RESET}")
+        if result.citation_chunk_ids:
+            print(f"{C_DIM}citations: {','.join(result.citation_chunk_ids)}{C_RESET}")
+        return 0
+    else:
+        print(f"{C_RED}refusal: {result.refusal_reason or 'unknown'}{C_RESET}", file=sys.stderr)
+        return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="ragops", description="RAGOps pipeline CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -287,27 +448,29 @@ def main() -> int:
             help=f"Directory for registry and active index (default: {DEFAULT_INDEXES_DIR})",
         )
 
-    # ingest
+    # ingest (default --out under indexes-dir for idempotent pipeline)
     p_ingest = subparsers.add_parser("ingest", help="Ingest PDF into typed Document + Chunks")
+    _add_indexes_dir(p_ingest)
     p_ingest.add_argument("--pdf", required=True, help="Path to PDF file")
-    p_ingest.add_argument("--out", default=None, help="Optional path to write ingestion_output.json")
+    p_ingest.add_argument("--out", default=None, help="Path to write ingestion_output.json (default: indexes_dir/ingestion.json)")
     p_ingest.set_defaults(func=cmd_ingest)
 
-    # build-index
+    # build-index (default --ingestion and --out under indexes-dir for idempotent pipeline)
     p_build = subparsers.add_parser("build-index", help="Build index from ingestion output and register (default: BGE backend)")
     _add_indexes_dir(p_build)
-    p_build.add_argument("--ingestion", required=True, help="Path to ingestion_output.json")
+    p_build.add_argument("--ingestion", default=None, help="Path to ingestion_output.json (default: indexes_dir/ingestion.json)")
     p_build.add_argument("--index-version", required=True, dest="index_version", help="Index version id (must not start with 'fake' unless --use-fake)")
-    p_build.add_argument("--out", required=True, help="Path to write index file (must not exist)")
+    p_build.add_argument("--out", default=None, help="Path to write index file (default: indexes_dir/<index_version>.json)")
+    p_build.add_argument("--overwrite", action="store_true", help="Overwrite existing index file (idempotent re-run)")
     p_build.add_argument("--use-fake", action="store_true", dest="use_fake", help="Use test-only fake embedding backend (index_version may start with 'fake')")
     p_build.set_defaults(func=cmd_build_index)
 
-    # evaluate
+    # evaluate (default --out evaluations/ for idempotent pipeline)
     p_eval = subparsers.add_parser("evaluate", help="Evaluate retrieval and persist reports")
     _add_indexes_dir(p_eval)
     p_eval.add_argument("--index-version", required=True, dest="index_version", help="Index version id")
     p_eval.add_argument("--queries", required=True, help="Path to queries.json (array of query strings)")
-    p_eval.add_argument("--out", required=True, help="Directory to write evaluation report(s)")
+    p_eval.add_argument("--out", default=DEFAULT_EVALUATIONS_DIR, help=f"Directory to write evaluation report(s) (default: {DEFAULT_EVALUATIONS_DIR})")
     p_eval.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, dest="top_k", help=f"Top-k for retrieval (default: {DEFAULT_TOP_K})")
     p_eval.add_argument("--min-confidence", type=float, default=None, dest="min_confidence", help="Min top similarity score for evaluation (default: 0.5)")
     p_eval.add_argument("--min-alphabetic-ratio", type=float, default=None, dest="min_alphabetic_ratio", help="Min alphabetic ratio for gibberish (default: 0.5)")
@@ -329,7 +492,27 @@ def main() -> int:
     p_ask.add_argument("--llm", choices=["fake", "ollama"], default="ollama", help="Inference backend (default: ollama)")
     p_ask.add_argument("--model", default="llama3.1:8b", help="Ollama model name when --llm ollama (default: llama3.1:8b)")
     p_ask.add_argument("--min-confidence", type=float, default=None, dest="min_confidence", help="Min top similarity score (default: 0.5)")
+    p_ask.add_argument("--min-alphabetic-ratio", type=float, default=None, dest="min_alphabetic_ratio", help="Min alphabetic ratio for gibberish (default: 0.5)")
+    p_ask.add_argument("--max-entropy", type=float, default=None, dest="max_entropy", help="Max character entropy for gibberish (default: 5.0)")
     p_ask.set_defaults(func=cmd_ask)
+
+    # run (E2E: ingest + build, then one question → evaluate, promote, ask; colored output)
+    p_run = subparsers.add_parser(
+        "run",
+        help="E2E: ingest PDF + build index, then one question → evaluate, promote, ask (Ollama). Colored terminal.",
+    )
+    _add_indexes_dir(p_run)
+    p_run.add_argument("--pdf", required=True, help="Path to PDF file")
+    p_run.add_argument("--evaluations-dir", default=DEFAULT_EVALUATIONS_DIR, dest="evaluations_dir", help=f"Directory for evaluation reports (default: {DEFAULT_EVALUATIONS_DIR})")
+    p_run.add_argument("--index-version", default="v1", dest="index_version", help="Index version id (default: v1)")
+    p_run.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, dest="top_k", help=f"Top-k for retrieval (default: {DEFAULT_TOP_K})")
+    p_run.add_argument("--llm", choices=["fake", "ollama"], default="ollama", help="Inference backend (default: ollama)")
+    p_run.add_argument("--model", default="llama3.1:8b", help="Ollama model when --llm ollama (default: llama3.1:8b)")
+    p_run.add_argument("--use-fake", action="store_true", dest="use_fake", help="Use test-only fake embedding (index_version may start with 'fake')")
+    p_run.add_argument("--min-confidence", type=float, default=None, dest="min_confidence", help="Min top similarity score (default: 0.5)")
+    p_run.add_argument("--min-alphabetic-ratio", type=float, default=None, dest="min_alphabetic_ratio", help="Min alphabetic ratio for gibberish (default: 0.5)")
+    p_run.add_argument("--max-entropy", type=float, default=None, dest="max_entropy", help="Max character entropy for gibberish (default: 5.0)")
+    p_run.set_defaults(func=cmd_run)
 
     args = parser.parse_args()
     return args.func(args)
