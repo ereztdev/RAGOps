@@ -63,6 +63,16 @@ ragops ask --query "What is GLARB-GLARB?"
 ragops run --pdf data/test_pdfs/ragops_semantic_test_pdf.pdf
 ```
 
+## Docker Setup
+
+- **Build and start:** `docker compose up -d --build`
+- **Enter container:** `docker compose exec ragops bash`
+- **Run commands inside:** `ragops run --pdf /app/data/test_pdfs/ragops_semantic_test_pdf.pdf` (use `--run-log data/run_log.md` to persist the run log in `./data`)
+- **Stop:** `docker compose down`
+- **Clean volumes:** `docker compose down -v`
+
+Note: The first Ollama request after start takes ~1–2 min (model load); subsequent requests ~15–30s. Ollama is only reachable from the `ragops` container at `http://ollama:11434` (no host port). Indexes and evaluations persist in `./data/indexes` and `./data/evaluations` on the host.
+
 ## Architecture
 
 ```

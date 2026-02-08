@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.git/
+.gitignore
+*.egg-info/
+.pytest_cache/
+indexes/
+evaluations/
+run_log.md
+ingestion.json
+queries.json
+.venv/
+venv/
+.DS_Store

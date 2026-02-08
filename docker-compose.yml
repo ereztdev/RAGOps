@@ -1,0 +1,38 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    networks:
+      - ragops-net
+    healthcheck:
+      # Official ollama/ollama image has no curl/wget; use ollama list to probe API
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  ragops:
+    build: .
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./data/test_pdfs:/app/data/test_pdfs
+      - ./data/indexes:/app/indexes
+      - ./data/evaluations:/app/evaluations
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    networks:
+      - ragops-net
+    working_dir: /app
+    stdin_open: true
+    tty: true
+
+networks:
+  ragops-net:
+    driver: bridge
+
+volumes:
+  ollama_models:
