@@ -132,7 +132,11 @@ Run `python -m ragops.cli <command> --help` for options.
 
 ### Ollama performance
 
-The first request after starting Ollama (or after a long idle) loads the model into memory (**cold start**), which can take ~1–2 minutes for an 8B model. Later requests use the already-loaded model (**warm**), typically 15–30 seconds depending on context length and hardware. To speed up: use a smaller model (e.g. `--model llama3.2:3b`), ensure Ollama has enough RAM/VRAM, or keep Ollama running so the model stays loaded between asks.
+The first request after starting Ollama (or after a long idle) loads the model into memory (**cold start**), which can take ~1–2 minutes for an 8B model. Later requests use the already-loaded model (**warm**), typically 15–30 seconds depending on context length and hardware.
+
+**Built-in optimizations:** The app uses `num_ctx=8192` and `num_predict=512` for faster RAG answers, and tells Ollama to keep the model loaded for 10 minutes (`keep_alive=10m`) so repeated `ask` commands avoid cold start. Docker Compose sets `OLLAMA_KEEP_ALIVE=10m` on the Ollama service.
+
+**To run faster:** Use a smaller model (e.g. `--model llama3.2:3b`), ensure Ollama has enough RAM/VRAM, keep Ollama running between asks, or enable GPU in Docker (see `docker-compose.yml`: uncomment the `deploy.resources.reservations.devices` block and ensure [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/) is installed).
 
 ## Tests
 

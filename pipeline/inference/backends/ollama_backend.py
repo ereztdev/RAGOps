@@ -14,9 +14,18 @@ Performance note (why first run is slow, later runs faster):
 from __future__ import annotations
 
 import logging
+import os
 import time
 
 logger = logging.getLogger("ragops.inference")
+
+# Default Ollama host (Docker sets OLLAMA_HOST=http://ollama:11434)
+_DEFAULT_OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+# RAG answers: limit context and output for speed (smaller num_ctx = faster)
+_DEFAULT_NUM_CTX = 8192
+_DEFAULT_NUM_PREDICT = 512
+# Keep model loaded between requests to avoid cold-start (~1–2 min for 8B)
+_KEEP_ALIVE_DEFAULT = "10m"
 
 _OLLAMA_AVAILABLE = False
 _ollama_client_module = None
@@ -41,8 +50,11 @@ class OllamaInferenceBackend:
     def __init__(
         self,
         model: str = "llama3.1:8b",
-        base_url: str = "http://localhost:11434",
+        base_url: str | None = None,
         timeout: int = 60,
+        num_ctx: int = _DEFAULT_NUM_CTX,
+        num_predict: int = _DEFAULT_NUM_PREDICT,
+        keep_alive: str | int = _KEEP_ALIVE_DEFAULT,
     ) -> None:
         if not _OLLAMA_AVAILABLE:
             raise ImportError(
@@ -50,9 +62,12 @@ class OllamaInferenceBackend:
                 "Install it with: pip install ollama"
             ) from None
         self._model = model
-        self._base_url = base_url.rstrip("/")
+        self._base_url = (base_url or _DEFAULT_OLLAMA_HOST).rstrip("/")
         self._timeout = timeout
-        self._client = OllamaClient(host=base_url)
+        self._num_ctx = num_ctx
+        self._num_predict = num_predict
+        self._keep_alive = keep_alive
+        self._client = OllamaClient(host=self._base_url)
 
     @property
     def model_id(self) -> str:
@@ -66,7 +81,11 @@ class OllamaInferenceBackend:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
-        options = {"temperature": 0}
+        options = {
+            "temperature": 0,
+            "num_ctx": self._num_ctx,
+            "num_predict": self._num_predict,
+        }
         t0 = time.perf_counter()
         logger.info(
             "request_sent backend=ollama model=%s query_len=%d context_len=%d",
@@ -81,6 +100,7 @@ class OllamaInferenceBackend:
                     model=self._model,
                     messages=messages,
                     options=options,
+                    keep_alive=self._keep_alive,
                 )
                 elapsed = time.perf_counter() - t0
                 answer = (response.message.content or "").strip()

@@ -5,6 +5,17 @@ services:
       - ollama_models:/root/.ollama
     networks:
       - ragops-net
+    environment:
+      # Keep model loaded 10m between requests (avoids ~1–2 min cold start per ask)
+      OLLAMA_KEEP_ALIVE: "10m"
+    # Uncomment for NVIDIA GPU (requires nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     healthcheck:
       # Official ollama/ollama image has no curl/wget; use ollama list to probe API
       test: ["CMD", "ollama", "list"]
