@@ -149,6 +149,7 @@ python -m pytest tests/test_segment7_evaluation.py -v
 - Python 3.10+
 - sentence-transformers (for BGE embeddings)
 - pypdf (for PDF extraction)
+- Ollama (optional, for real LLM inference)
 
 ## License
 
