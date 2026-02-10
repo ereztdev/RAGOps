@@ -1,5 +1,7 @@
 # RAGOps
 
+![RAGOps splash — GPU diagnostics and data visualization on the tarmac](gpu_splash.png)
+
 **AI-powered troubleshooting for ground support equipment.**
 
 RAGOps is a deterministic Retrieval-Augmented Generation pipeline built for aviation GSE maintenance. It ingests OEM technical manuals, indexes them locally, and answers troubleshooting questions with cited, verifiable answers — or explicitly refuses when the documentation doesn't support a claim.
