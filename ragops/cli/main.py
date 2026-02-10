@@ -153,10 +153,8 @@ def _append_run_log(
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     question_line = f"- **Question:** {question.replace(chr(10), ' ')}\n" if question else ""
     model_line = f"- **Model:** {model}\n" if model else ""
-    answer_line = ""
-    if answer:
-        answer_escaped = answer.replace(chr(10), " ").strip()
-        answer_line = f"- **Answer:** {answer_escaped}\n"
+    answer_escaped = (answer or "(no answer recorded)").replace(chr(10), " ").strip()
+    answer_line = f"- **Answer:** {answer_escaped}\n"
     block = f"""
 ## {ts} — {pdf_name}
 - **PDF:** {pdf_name} · {pdf_size_kb:.0f} KB · **Pages:** {pages}
@@ -455,7 +453,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     config = _eval_config_from_args(args)
     index = load_index(index_path)
     retrieval_result = retrieve(question, index, backend_emb, top_k)
+    print(f"  {C_DIM}[{time.perf_counter() - part2_start:.1f} s] Retrieved context{C_RESET}", file=sys.stderr)
     report = evaluate_retrieval(retrieval_result, question, config, evaluations_dir=evaluations_dir)
+    print(f"  {C_DIM}[{time.perf_counter() - part2_start:.1f} s] Evaluated{C_RESET}", file=sys.stderr)
 
     if not report.overall_pass:
         failed = [name for name, sr in report.signals.items() if not sr.passed]
@@ -494,6 +494,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     except (EvaluationFailedError, Exception) as e:
         print(f"{C_RED}promote error: {e}{C_RESET}", file=sys.stderr)
         return 1
+    print(f"  {C_DIM}[{time.perf_counter() - part2_start:.1f} s] Promoted{C_RESET}", file=sys.stderr)
 
     llm_name = getattr(args, "llm", "ollama") or "ollama"
     model_used = ""
@@ -511,6 +512,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"{C_RED}ask error: unsupported --llm {llm_name!r}{C_RESET}", file=sys.stderr)
         return 1
 
+    # Progress callback: log each phase of "ask" (resolve → load → retrieve → evaluate → LLM)
+    ask_phase_start = time.perf_counter()
+    def _progress(phase: str, elapsed: float) -> None:
+        print(f"  {C_DIM}[{elapsed:.1f} s] {phase}{C_RESET}", file=sys.stderr)
+    progress_cb = _progress if sys.stderr.isatty() else None
+
     # Spinner while Ollama runs (long wait with no UX otherwise)
     stop_spinner = threading.Event()
     spinner_thread = threading.Thread(target=_spinner_while, args=(stop_spinner,), daemon=True)
@@ -525,17 +532,22 @@ def cmd_run(args: argparse.Namespace) -> int:
             llm,
             config,
             evaluations_dir=None,
+            progress_callback=progress_cb,
         )
     finally:
         stop_spinner.set()
         if sys.stdout.isatty():
             spinner_thread.join(timeout=1.0)
 
+    if progress_cb:
+        print(f"  {C_DIM}[{time.perf_counter() - ask_phase_start:.1f} s] ask done (LLM responded){C_RESET}", file=sys.stderr)
     part2_sec = time.perf_counter() - part2_start
 
     run_log_path = getattr(args, "run_log", None)
     if run_log_path and str(run_log_path).lower() not in ("", "none", "no"):
         answer_for_log = (result.answer_text or "").strip() if result.found else (f"(refused: {result.refusal_reason or 'unknown'})")
+        if not answer_for_log:
+            answer_for_log = "(no answer recorded)"
         try:
             _append_run_log(
                 Path(run_log_path),

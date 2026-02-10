@@ -35,3 +35,32 @@
 - **Question:** tell me about the power this GPU needs and what it creates
 - **Part 1 (ingest+build):** 8.2 s
 - **Part 2 (eval+ask):** 194.8 s
+
+## 2026-02-08 23:34 — dynell_Imagefolder_2024.pdf
+- **PDF:** dynell_Imagefolder_2024.pdf · 2262 KB · **Pages:** 1
+- **Chunks:** 9 · **Tokens (approx):** 4,383
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** what aircrafts can
+- **Part 1 (ingest+build):** 12.5 s
+- **Part 2 (eval+ask):** 103.5 s
+
+## 2026-02-08 23:38 — dynell_Imagefolder_2024.pdf
+- **PDF:** dynell_Imagefolder_2024.pdf · 2262 KB · **Pages:** 1
+- **Chunks:** 9 · **Tokens (approx):** 4,383
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** hohow do I use this GPU on a cessna 172
+- **Part 1 (ingest+build):** 7.6 s
+- **Part 2 (eval+ask):** 117.9 s
+
+    
+
+## 2026-02-10 00:04 — JETEX4D7003B.pdf
+- **PDF:** JETEX4D7003B.pdf · 1700 KB · **Pages:** 1
+- **Chunks:** 79 · **Tokens (approx):** 40,718
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** The engine is starting properly, but it shuts down the moment the operator releases the engine switch from the 'START' to the 'RUN' position. To diagnose this, the technician decides to bypass the safety switches one by one. If they want to specifically test the engine overtemperature protection, where are the physical terminals they should place a clip-lead jumper wire on, and what is the exact temperature at which that component is designed to trip?
+- **Part 1 (ingest+build):** 32.8 s
+- **Part 2 (eval+ask):** 243.3 s

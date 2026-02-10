@@ -6,7 +6,9 @@ Inference path that uses the active index: run_inference_using_active_index; ref
 """
 from __future__ import annotations
 
+import time
 from pathlib import Path
+from typing import Callable
 
 from core.schema import (
     AnswerWithCitations,
@@ -133,13 +135,17 @@ def run_inference_using_active_index(
     evaluation_config: EvaluationConfig,
     fixtures: FixturesMap | None = None,
     evaluations_dir: Path | str | None = None,
+    progress_callback: Callable[[str, float], None] | None = None,
 ) -> AnswerWithCitations:
     """
     Run grounded inference using the promoted active index only.
     Resolves index_version_id and index_path from active_index.json + registry;
     loads index, runs retrieval, evaluation, then run_grounded_inference.
     Missing or invalid active index causes refusal (no_active_index); no defaults, no fallbacks.
+    If progress_callback is set, it is called with (phase, elapsed_sec) for: resolved_index,
+    loaded_index, retrieved, evaluated, calling_llm.
     """
+    t0 = time.perf_counter()
     indexes_dir = Path(indexes_dir)
     registry_path = indexes_dir / "registry.json"
     active_index_path = indexes_dir / "active_index.json"
@@ -152,11 +158,17 @@ def run_inference_using_active_index(
             found=False,
             refusal_reason=REFUSAL_NO_ACTIVE_INDEX,
         )
+    if progress_callback:
+        progress_callback("resolved_index", time.perf_counter() - t0)
     path = Path(index_path)
     if not path.is_absolute():
         path = indexes_dir / path
     index = load_index(path)
+    if progress_callback:
+        progress_callback("loaded_index", time.perf_counter() - t0)
     retrieval_result = retrieve(query, index, embedding_backend, top_k)
+    if progress_callback:
+        progress_callback("retrieved", time.perf_counter() - t0)
     evaluation_report = evaluate_retrieval(
         retrieval_result,
         query,
@@ -164,4 +176,8 @@ def run_inference_using_active_index(
         fixtures=fixtures,
         evaluations_dir=evaluations_dir,
     )
+    if progress_callback:
+        progress_callback("evaluated", time.perf_counter() - t0)
+    if progress_callback:
+        progress_callback("calling_llm", time.perf_counter() - t0)
     return run_grounded_inference(query, retrieval_result, evaluation_report, llm)
