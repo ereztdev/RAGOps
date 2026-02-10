@@ -178,4 +178,4 @@ Run `ragops <command> --help` for options.
 
 ## License
 
-MIT
+AGPL-3.0
