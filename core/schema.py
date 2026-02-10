@@ -83,10 +83,14 @@ class Chunk:
     page_number: int
     chunk_index: int
     text: str
+    # Optional metadata from PDF parsing (graceful degradation if None)
+    chapter: str | None = None
+    section: str | None = None
+    domain_hint: str | None = None
 
     def to_serializable(self) -> dict[str, Any]:
         """Stable dict for JSON: field order consistent."""
-        return {
+        out: dict[str, Any] = {
             "chunk_id": self.chunk_id,
             "chunk_key": self.chunk_key,
             "document_id": self.document_id,
@@ -95,6 +99,13 @@ class Chunk:
             "chunk_index": self.chunk_index,
             "text": self.text,
         }
+        if self.chapter is not None:
+            out["chapter"] = self.chapter
+        if self.section is not None:
+            out["section"] = self.section
+        if self.domain_hint is not None:
+            out["domain_hint"] = self.domain_hint
+        return out
 
 
 @dataclass
@@ -162,6 +173,7 @@ class RetrievalHit:
     """
     Trace payload for one retrieved chunk. All fields required; no silent defaults.
     Enables traceability: chunk -> document -> source, and embedding state.
+    Optional metadata for provenance logging (chunk_id, page, confidence, domain_hint, boost).
     """
     chunk_id: str
     document_id: str
@@ -169,9 +181,16 @@ class RetrievalHit:
     embedding_vector_id: str
     index_version: str
     similarity_score: float
+    # Optional provenance (None when metadata not available)
+    page_number: int | None = None
+    chapter: str | None = None
+    section: str | None = None
+    domain_hint: str | None = None
+    boosted: bool = False
+    original_score: float | None = None
 
     def to_serializable(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "chunk_id": self.chunk_id,
             "document_id": self.document_id,
             "raw_text": self.raw_text,
@@ -179,6 +198,19 @@ class RetrievalHit:
             "index_version": self.index_version,
             "similarity_score": self.similarity_score,
         }
+        if self.page_number is not None:
+            out["page_number"] = self.page_number
+        if self.chapter is not None:
+            out["chapter"] = self.chapter
+        if self.section is not None:
+            out["section"] = self.section
+        if self.domain_hint is not None:
+            out["domain_hint"] = self.domain_hint
+        if self.boosted:
+            out["boosted"] = self.boosted
+        if self.original_score is not None:
+            out["original_score"] = self.original_score
+        return out
 
 
 @dataclass

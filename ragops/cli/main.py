@@ -46,8 +46,14 @@ from pipeline.promotion.promoter import (
     EvaluationFailedError,
     promote_index,
 )
+from core.schema import HybridRetrievalConfig
 from pipeline.retrieval.retrieval_engine import build_index_snapshot, retrieve
 from storage.vector_index_store import load_index, save_index
+
+try:
+    from ragops.logging import append_run_log as ragops_append_run_log
+except ImportError:
+    ragops_append_run_log = None
 
 DEFAULT_INDEXES_DIR = "indexes"
 DEFAULT_EVALUATIONS_DIR = "evaluations"
@@ -344,7 +350,7 @@ def cmd_ask(args: argparse.Namespace) -> int:
         print(f"ask error: unsupported --llm {llm_name!r}", file=sys.stderr)
         return 1
 
-    result = run_inference_using_active_index(
+    result, _retrieval_result, _detected_domains = run_inference_using_active_index(
         args.query,
         indexes_dir,
         backend,
@@ -452,7 +458,25 @@ def cmd_run(args: argparse.Namespace) -> int:
     top_k = getattr(args, "top_k", DEFAULT_TOP_K) or DEFAULT_TOP_K
     config = _eval_config_from_args(args)
     index = load_index(index_path)
-    retrieval_result = retrieve(question, index, backend_emb, top_k)
+    try:
+        from ragops.config import METADATA_BOOST_ENABLED
+        from ragops.retrieval.hybrid_retrieval import hybrid_retrieve
+        if METADATA_BOOST_ENABLED and hybrid_retrieve is not None:
+            retrieval_result, _ = hybrid_retrieve(
+                question, index, backend_emb,
+                final_top_k=top_k,
+                hybrid_config=HybridRetrievalConfig(),
+            )
+        else:
+            retrieval_result = retrieve(
+                question, index, backend_emb, top_k,
+                hybrid_config=HybridRetrievalConfig(),
+            )
+    except ImportError:
+        retrieval_result = retrieve(
+            question, index, backend_emb, top_k,
+            hybrid_config=HybridRetrievalConfig(),
+        )
     print(f"  {C_DIM}[{time.perf_counter() - part2_start:.1f} s] Retrieved context{C_RESET}", file=sys.stderr)
     report = evaluate_retrieval(retrieval_result, question, config, evaluations_dir=evaluations_dir)
     print(f"  {C_DIM}[{time.perf_counter() - part2_start:.1f} s] Evaluated{C_RESET}", file=sys.stderr)
@@ -524,7 +548,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if sys.stdout.isatty():
         spinner_thread.start()
     try:
-        result = run_inference_using_active_index(
+        result, retrieval_result, detected_domains = run_inference_using_active_index(
             question,
             indexes_dir,
             backend_emb,
@@ -549,20 +573,38 @@ def cmd_run(args: argparse.Namespace) -> int:
         if not answer_for_log:
             answer_for_log = "(no answer recorded)"
         try:
-            _append_run_log(
-                Path(run_log_path),
-                pdf_name=pdf_name,
-                pdf_size_kb=pdf_size_kb,
-                pages=n_pages,
-                chunks=n_chunks,
-                tokens_approx=tokens_approx,
-                part1_sec=part1_sec,
-                part2_sec=part2_sec,
-                index_version=index_version,
-                question=question,
-                model=model_used,
-                answer=answer_for_log,
-            )
+            if ragops_append_run_log is not None:
+                ragops_append_run_log(
+                    Path(run_log_path),
+                    pdf_name=pdf_name,
+                    pdf_size_kb=pdf_size_kb,
+                    pages=n_pages,
+                    chunks=n_chunks,
+                    tokens_approx=tokens_approx,
+                    part1_sec=part1_sec,
+                    part2_sec=part2_sec,
+                    index_version=index_version,
+                    question=question,
+                    model=model_used,
+                    answer=answer_for_log,
+                    retrieval_result=retrieval_result,
+                    detected_domains=detected_domains,
+                )
+            else:
+                _append_run_log(
+                    Path(run_log_path),
+                    pdf_name=pdf_name,
+                    pdf_size_kb=pdf_size_kb,
+                    pages=n_pages,
+                    chunks=n_chunks,
+                    tokens_approx=tokens_approx,
+                    part1_sec=part1_sec,
+                    part2_sec=part2_sec,
+                    index_version=index_version,
+                    question=question,
+                    model=model_used,
+                    answer=answer_for_log,
+                )
         except OSError as e:
             print(f"{C_DIM}(run log not written: {e}){C_RESET}", file=sys.stderr)
 

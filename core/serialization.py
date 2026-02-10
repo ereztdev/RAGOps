@@ -66,6 +66,9 @@ def load_ingestion_output(path: Path | str) -> Document:
                 page_number=int(item["page_number"]),
                 chunk_index=int(item["chunk_index"]),
                 text=item["text"],
+                chapter=item.get("chapter"),
+                section=item.get("section"),
+                domain_hint=item.get("domain_hint"),
             )
         )
     return Document(

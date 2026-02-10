@@ -92,7 +92,11 @@ def _ingestion_schema_keys() -> set[str]:
 
 
 def _chunk_schema_keys() -> set[str]:
-    return {"chunk_id", "chunk_key", "document_id", "source_type", "page_number", "chunk_index", "text"}
+    """Required and optional chunk keys (optional: chapter, section, domain_hint)."""
+    return {
+        "chunk_id", "chunk_key", "document_id", "source_type", "page_number", "chunk_index", "text",
+        "chapter", "section", "domain_hint",
+    }
 
 
 class TestIngestionOutputSchema(unittest.TestCase):
@@ -103,8 +107,10 @@ class TestIngestionOutputSchema(unittest.TestCase):
         self.assertEqual(set(data.keys()), _ingestion_schema_keys())
         self.assertEqual(data["document_id"], doc.document_id)
         self.assertEqual(data["source_path"], doc.source_path)
+        required = {"chunk_id", "chunk_key", "document_id", "source_type", "page_number", "chunk_index", "text"}
         for c in data["chunks"]:
-            self.assertEqual(set(c.keys()), _chunk_schema_keys())
+            self.assertLessEqual(set(c.keys()), _chunk_schema_keys(), "chunk has only allowed keys")
+            self.assertGreaterEqual(set(c.keys()), required, "chunk has all required keys")
             self.assertEqual(c["chunk_key"], f"{c['document_id']}:{c['page_number']}")
 
     def test_semantic_pdf_serializes_correctly(self) -> None:
@@ -142,7 +148,9 @@ class TestIngestionOutputSchema(unittest.TestCase):
             self.assertEqual(set(loaded.keys()), _ingestion_schema_keys())
             self.assertEqual(loaded["document_id"], doc.document_id)
             if loaded["chunks"]:
-                self.assertEqual(set(loaded["chunks"][0].keys()), _chunk_schema_keys())
+                keys = set(loaded["chunks"][0].keys())
+                self.assertLessEqual(keys, _chunk_schema_keys())
+                self.assertGreaterEqual(keys, {"chunk_id", "chunk_key", "document_id", "source_type", "page_number", "chunk_index", "text"})
 
 
 # ---------------------------------------------------------------------------

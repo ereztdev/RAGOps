@@ -1,6 +1,7 @@
 """
 Ingestion pipeline: responsible for hashing, parsing, and chunking documents.
 Emits typed Document and Chunk; serializes output using the canonical schema.
+Uses ragops.ingest.pdf_parser for per-page metadata (chapter, section, domain_hint).
 """
 from __future__ import annotations
 
@@ -19,10 +20,31 @@ from core.schema import (
 from core.serialization import write_ingestion_output
 from pypdf import PdfReader
 
+from ragops.ingest.pdf_parser import (
+    extract_metadata_from_page_text,
+    PageMetadata,
+)
+
 
 def _simple_tokenize(text: str) -> list[str]:
     """Simple whitespace tokenizer. Deterministic."""
     return text.split()
+
+
+def _token_offset_to_page(
+    start_token_idx: int,
+    page_token_offsets: list[tuple[int, int, int]],
+) -> int:
+    """
+    Map global token index to page number. page_token_offsets is list of
+    (page_number, start_token_idx, end_token_idx) in order.
+    """
+    for page_num, start, end in page_token_offsets:
+        if start <= start_token_idx < end:
+            return page_num
+    if page_token_offsets:
+        return page_token_offsets[-1][0]
+    return 1
 
 
 def _sliding_window_chunks(
@@ -30,20 +52,23 @@ def _sliding_window_chunks(
     config: ChunkingConfig,
     document_id: str,
     source_type: str,
-    starting_page_number: int,
+    page_token_offsets: list[tuple[int, int, int]],
+    page_metadata: dict[int, Optional[PageMetadata]],
 ) -> list[Chunk]:
     """
     Split text into overlapping chunks using a sliding window.
+    Assigns each chunk to a page via token offsets and attaches chapter/section/domain_hint.
 
     Args:
         text: Full document text (all pages concatenated)
         config: ChunkingConfig with chunk_size_tokens and overlap_tokens
         document_id: Deterministic document identifier
         source_type: "pdf", "txt", etc.
-        starting_page_number: Page number where this text starts (for chunk_id)
+        page_token_offsets: (page_number, start_idx, end_idx) per page
+        page_metadata: page_number -> PageMetadata or None
 
     Returns:
-        List of Chunk objects with deterministic chunk_ids
+        List of Chunk objects with deterministic chunk_ids and optional metadata
     """
     tokens = _simple_tokenize(text)
     if not tokens:
@@ -61,13 +86,16 @@ def _sliding_window_chunks(
         if not chunk_text.strip():
             continue
 
-        # chunk_key uses starting_page_number for all windows (for backward compat with existing code)
-        key = chunk_key(document_id, starting_page_number)
-
-        # chunk_id uses chunk_index to differentiate windows
+        page_number = _token_offset_to_page(start_idx, page_token_offsets)
+        key = chunk_key(document_id, page_number)
         cid = chunk_id_from_components(
-            document_id, source_type, starting_page_number, chunk_index
+            document_id, source_type, page_number, chunk_index
         )
+
+        meta = page_metadata.get(page_number)
+        chapter = meta.chapter if meta else None
+        section = meta.section if meta else None
+        domain_hint = meta.domain_hint if meta else None
 
         chunks.append(
             Chunk(
@@ -75,15 +103,17 @@ def _sliding_window_chunks(
                 chunk_key=key,
                 document_id=document_id,
                 source_type=source_type,
-                page_number=starting_page_number,
+                page_number=page_number,
                 chunk_index=chunk_index,
                 text=chunk_text,
+                chapter=chapter,
+                section=section,
+                domain_hint=domain_hint,
             )
         )
 
         chunk_index += 1
 
-        # Stop if we've consumed all tokens
         if end_idx >= len(tokens):
             break
 
@@ -149,16 +179,35 @@ def run_ingestion_pipeline(
             write_ingestion_output(document, output_path)
         return document
 
-    # Use sliding-window chunking with default config
+    # Per-page metadata (graceful: None if extraction fails)
+    page_metadata: dict[int, Optional[PageMetadata]] = {}
+    for page_number, text in page_texts:
+        try:
+            meta = extract_metadata_from_page_text(page_number, text)
+            page_metadata[page_number] = meta
+        except Exception:
+            page_metadata[page_number] = None
+
+    # Token offsets per page: (page_number, start_token_idx, end_token_idx)
+    all_tokens = _simple_tokenize(full_text)
+    page_token_offsets: list[tuple[int, int, int]] = []
+    offset = 0
+    for page_number, text in page_texts:
+        page_tokens = _simple_tokenize(text)
+        start_idx = offset
+        end_idx = offset + len(page_tokens)
+        offset = end_idx
+        page_token_offsets.append((page_number, start_idx, end_idx))
+
     config = ChunkingConfig()  # Default: 400 tokens, 100 overlap
-    starting_page = first_nonempty_page if first_nonempty_page is not None else 1
 
     chunks = _sliding_window_chunks(
         full_text,
         config,
         document_id,
         source_type,
-        starting_page,
+        page_token_offsets,
+        page_metadata,
     )
 
     document = Document(

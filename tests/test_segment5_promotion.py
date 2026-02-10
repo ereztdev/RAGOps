@@ -247,7 +247,7 @@ class TestInferenceRefusesWhenNoActiveIndex(unittest.TestCase):
             backend = FakeEmbeddingBackend()
             llm = FakeInferenceBackend()
             config = _eval_config()
-            out = run_inference_using_active_index(
+            out, _, _ = run_inference_using_active_index(
                 "query",
                 indexes_dir,
                 backend,
@@ -273,7 +273,7 @@ class TestInferenceRefusesWhenNoActiveIndex(unittest.TestCase):
             backend = FakeEmbeddingBackend()
             llm = FakeInferenceBackend()
             config = _eval_config()
-            out = run_inference_using_active_index(
+            out, _, _ = run_inference_using_active_index(
                 "query",
                 indexes_dir,
                 backend,

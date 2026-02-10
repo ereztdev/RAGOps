@@ -1,0 +1,9 @@
+[
+  {
+    "created_at": "2026-02-10T02:12:07.410337Z",
+    "evaluation_report_id": "9a823178175f9b5877e71e7138ee395f09731e1c36796996ec8b1ac9d4384ba8",
+    "index_path": "/home/local/projects/RAGOps/indexes/JETEX4D7003B/v1.json",
+    "index_version_id": "v1",
+    "status": "promoted"
+  }
+]

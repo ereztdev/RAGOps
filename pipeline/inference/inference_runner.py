@@ -14,6 +14,7 @@ from core.schema import (
     AnswerWithCitations,
     EvaluationConfig,
     EvaluationReport,
+    HybridRetrievalConfig,
     RetrievalResult,
 )
 from pipeline.embedding.embedding_engine import EmbeddingBackend
@@ -25,6 +26,13 @@ from pipeline.inference.backends.base import FakeInferenceBackend, InferenceBack
 from pipeline.promotion.index_registry import resolve_active_index
 from pipeline.retrieval.retrieval_engine import retrieve
 from storage.vector_index_store import load_index
+
+try:
+    from ragops.config import METADATA_BOOST_ENABLED
+    from ragops.retrieval.hybrid_retrieval import hybrid_retrieve
+except ImportError:
+    METADATA_BOOST_ENABLED = False
+    hybrid_retrieve = None
 
 
 # ---------------------------------------------------------------------------
@@ -136,28 +144,37 @@ def run_inference_using_active_index(
     fixtures: FixturesMap | None = None,
     evaluations_dir: Path | str | None = None,
     progress_callback: Callable[[str, float], None] | None = None,
-) -> AnswerWithCitations:
+) -> tuple[AnswerWithCitations, RetrievalResult, list[str]]:
     """
     Run grounded inference using the promoted active index only.
     Resolves index_version_id and index_path from active_index.json + registry;
-    loads index, runs retrieval, evaluation, then run_grounded_inference.
+    loads index, runs retrieval (with optional domain boosting when METADATA_BOOST_ENABLED),
+    evaluation, then run_grounded_inference.
     Missing or invalid active index causes refusal (no_active_index); no defaults, no fallbacks.
     If progress_callback is set, it is called with (phase, elapsed_sec) for: resolved_index,
     loaded_index, retrieved, evaluated, calling_llm.
+
+    Returns:
+        (AnswerWithCitations, RetrievalResult, detected_domains for provenance logging).
     """
     t0 = time.perf_counter()
     indexes_dir = Path(indexes_dir)
     registry_path = indexes_dir / "registry.json"
     active_index_path = indexes_dir / "active_index.json"
-    try:
-        _index_version_id, index_path = resolve_active_index(registry_path, active_index_path)
-    except (FileNotFoundError, ValueError):
-        return AnswerWithCitations(
+    empty_result = (
+        AnswerWithCitations(
             answer_text=None,
             citation_chunk_ids=[],
             found=False,
             refusal_reason=REFUSAL_NO_ACTIVE_INDEX,
-        )
+        ),
+        RetrievalResult(hits=[], index_version="", top_k_requested=top_k, truncated=True, corpus_size=0),
+        [],
+    )
+    try:
+        _index_version_id, index_path = resolve_active_index(registry_path, active_index_path)
+    except (FileNotFoundError, ValueError):
+        return empty_result
     if progress_callback:
         progress_callback("resolved_index", time.perf_counter() - t0)
     path = Path(index_path)
@@ -166,7 +183,25 @@ def run_inference_using_active_index(
     index = load_index(path)
     if progress_callback:
         progress_callback("loaded_index", time.perf_counter() - t0)
-    retrieval_result = retrieve(query, index, embedding_backend, top_k)
+
+    if METADATA_BOOST_ENABLED and hybrid_retrieve is not None:
+        retrieval_result, detected_domains = hybrid_retrieve(
+            query,
+            index,
+            embedding_backend,
+            final_top_k=top_k,
+            hybrid_config=HybridRetrievalConfig(),
+        )
+    else:
+        retrieval_result = retrieve(
+            query,
+            index,
+            embedding_backend,
+            top_k,
+            hybrid_config=HybridRetrievalConfig(),
+        )
+        detected_domains = []
+
     if progress_callback:
         progress_callback("retrieved", time.perf_counter() - t0)
     evaluation_report = evaluate_retrieval(
@@ -180,4 +215,5 @@ def run_inference_using_active_index(
         progress_callback("evaluated", time.perf_counter() - t0)
     if progress_callback:
         progress_callback("calling_llm", time.perf_counter() - t0)
-    return run_grounded_inference(query, retrieval_result, evaluation_report, llm)
+    answer = run_grounded_inference(query, retrieval_result, evaluation_report, llm)
+    return answer, retrieval_result, detected_domains

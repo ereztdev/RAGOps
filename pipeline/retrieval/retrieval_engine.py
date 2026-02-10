@@ -35,26 +35,39 @@ _FLOAT_FORMAT = ".17g"
 
 @dataclass(frozen=True)
 class IndexEntry:
-    """One index row: chunk identity, text, and vector for similarity."""
+    """One index row: chunk identity, text, vector, and optional metadata for domain boosting."""
     chunk_id: str
     document_id: str
     raw_text: str
     embedding_vector_id: str
     vector: tuple[float, ...]
+    page_number: int | None = None
+    chapter: str | None = None
+    section: str | None = None
+    domain_hint: str | None = None
 
     def to_serializable(self) -> dict[str, Any]:
         """Stable dict for JSON. Vector as deterministic float strings for byte-identical output."""
-        return {
+        out: dict[str, Any] = {
             "chunk_id": self.chunk_id,
             "document_id": self.document_id,
             "raw_text": self.raw_text,
             "embedding_vector_id": self.embedding_vector_id,
             "vector": [format(v, _FLOAT_FORMAT) for v in self.vector],
         }
+        if self.page_number is not None:
+            out["page_number"] = self.page_number
+        if self.chapter is not None:
+            out["chapter"] = self.chapter
+        if self.section is not None:
+            out["section"] = self.section
+        if self.domain_hint is not None:
+            out["domain_hint"] = self.domain_hint
+        return out
 
     @classmethod
     def from_serializable(cls, data: dict[str, Any]) -> IndexEntry:
-        """Deserialize from dict. Fails loudly on missing or invalid fields."""
+        """Deserialize from dict. Fails loudly on missing or invalid fields. Optional metadata for backward compat."""
         required = ("chunk_id", "document_id", "raw_text", "embedding_vector_id", "vector")
         for key in required:
             if key not in data:
@@ -78,12 +91,19 @@ class IndexEntry:
             vector = tuple(float(x) for x in raw_vector)
         except (TypeError, ValueError) as e:
             raise ValueError(f"IndexEntry vector must be list of numbers: {e}") from e
+        page_number = data.get("page_number")
+        if page_number is not None:
+            page_number = int(page_number)
         return cls(
             chunk_id=chunk_id,
             document_id=document_id,
             raw_text=raw_text,
             embedding_vector_id=embedding_vector_id,
             vector=vector,
+            page_number=page_number,
+            chapter=data.get("chapter"),
+            section=data.get("section"),
+            domain_hint=data.get("domain_hint"),
         )
 
 
@@ -148,6 +168,10 @@ def build_index_snapshot(
                 raw_text=c.text,
                 embedding_vector_id=e.embedding_vector_id,
                 vector=e.vector,
+                page_number=c.page_number if c.page_number else None,
+                chapter=getattr(c, "chapter", None),
+                section=getattr(c, "section", None),
+                domain_hint=getattr(c, "domain_hint", None),
             )
         )
     return IndexSnapshot(index_version_id=index_version_id, entries=entries)
@@ -230,6 +254,36 @@ def _rrf_merge(
     ]
 
 
+def _extract_query_phrases(query: str, min_words: int = 2, max_words: int = 4) -> list[str]:
+    """
+    Extract candidate multi-word phrases from query.
+    Returns lowercased phrases of length min_words to max_words. Deterministic.
+    """
+    words = query.lower().split()
+    phrases: list[str] = []
+    for length in range(min_words, min(max_words + 1, len(words) + 1)):
+        for i in range(len(words) - length + 1):
+            phrases.append(" ".join(words[i : i + length]))
+    return phrases
+
+
+def _phrase_match_bonus(
+    query: str, chunk_text: str, bonus_per_phrase: float = 0.15, cap: float = 0.45
+) -> float:
+    """
+    Score bonus for multi-word phrase matches between query and chunk.
+    Each matching phrase adds bonus_per_phrase to the score. Capped at cap.
+    Deterministic for same inputs.
+    """
+    phrases = _extract_query_phrases(query)
+    chunk_lower = chunk_text.lower()
+    bonus = 0.0
+    for phrase in phrases:
+        if phrase in chunk_lower:
+            bonus += bonus_per_phrase
+    return min(bonus, cap)
+
+
 # ---------------------------------------------------------------------------
 # Query chunk for embedding (no protocol change)
 # ---------------------------------------------------------------------------
@@ -299,7 +353,7 @@ def retrieve(
     # Compute final scores
     if hybrid_config is None:
         # Phase 1 behavior: BGE-only
-        final_scores = bge_scores
+        final_scores = list(bge_scores)
     else:
         # Hybrid: BGE + BM25 merged via RRF
         from pipeline.retrieval.bm25_backend import Bm25Backend
@@ -313,9 +367,16 @@ def retrieve(
             k=hybrid_config.rrf_k,
         )
 
+    # Phrase-match bonus: reward chunks containing exact query phrases (e.g. "engine switch", "clip-lead jumper")
+    phrase_bonuses: list[float] = []
+    for entry in index.entries:
+        bonus = _phrase_match_bonus(query, entry.raw_text)
+        phrase_bonuses.append(bonus)
+    scores_with_phrase = [s + b for s, b in zip(final_scores, phrase_bonuses)]
+
     # Sort by final score descending, then chunk_id for determinism
     scored: list[tuple[float, IndexEntry]] = list(
-        zip(final_scores, index.entries)
+        zip(scores_with_phrase, index.entries)
     )
     scored.sort(key=lambda x: (-x[0], x[1].chunk_id))
 
@@ -332,6 +393,12 @@ def retrieve(
             embedding_vector_id=entry.embedding_vector_id,
             index_version=index.index_version_id,
             similarity_score=score,  # final_score (hybrid or BGE-only)
+            page_number=entry.page_number,
+            chapter=entry.chapter,
+            section=entry.section,
+            domain_hint=entry.domain_hint,
+            boosted=False,
+            original_score=None,
         )
         hits.append(hit)
 
@@ -345,15 +412,21 @@ def retrieve(
         corpus_size=corpus_size,
     )
 
-    # Structured JSON log
+    # Structured JSON log (include phrase_bonus for tuning)
     query_hash = hashlib.sha256(query.encode("utf-8")).hexdigest()
-    log_payload = {
+    log_payload: dict[str, Any] = {
         "query_hash": query_hash,
         "index_version": index.index_version_id,
         "top_k": top_k,
         "hybrid": hybrid_config is not None,
         "returned_chunk_ids": [h.chunk_id for h in hits],
     }
+    if phrase_bonuses:
+        log_payload["phrase_bonus_max"] = max(phrase_bonuses)
+        log_payload["phrase_bonus_top_k"] = [
+            phrase_bonuses[index.entries.index(entry)]
+            for _sc, entry in scored[:k]
+        ]
     logger.info("%s", json.dumps(log_payload, sort_keys=True))
 
     return result

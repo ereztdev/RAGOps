@@ -41,8 +41,9 @@ class TestRetrievalTraceFields(unittest.TestCase):
         required = {"chunk_id", "document_id", "raw_text", "embedding_vector_id", "index_version", "similarity_score"}
         for hit in result.hits:
             ser = hit.to_serializable()
-            self.assertEqual(set(ser.keys()), required, f"hit missing keys: {ser}")
+            self.assertGreaterEqual(set(ser.keys()), required, f"hit missing required keys: {ser}")
             for k in required:
+                self.assertIn(k, ser, f"hit must have key {k}")
                 self.assertIsNotNone(ser[k], f"hit.{k} must not be None")
             self.assertIsInstance(hit.similarity_score, float)
             self.assertEqual(hit.index_version, "v1")
