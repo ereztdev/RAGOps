@@ -10,6 +10,17 @@ No cloud dependency. No API keys. No data leaves your infrastructure.
 
 ---
 
+### Progress towards main objective achieving >90% Accuracy on multi facted chunked targets
+- As of now, the whole E2E and retrieval pipeline is complete (hybrid search, phrase-match bonus, domain boosting[topic labeling => a *"closed envelope"])
+- Initial manual testing: correct procedure identification on JETEX 4D queries
+- Benchmark harness designed; corpus build in progress (50-100 Q&A pairs from GSE manuals)
+- Youtube video where I'm going over:
+  - result discussions, distinctions and embedding strategies now and the what's coming up (training a local SLM? Yes.)
+  - why another RAG pipeline? What provides distinction with this approach (beyong the hybrid approach and phrase matching)
+  - walk through architecture stages E2E and discuss a bit why I chose "this over that"
+  - Demo full pipeline E2E
+  - Talk a bit about my background why GSE, why GPUs and *"closed envelope"
+
 ## The Problem
 
 A technician is on the ramp. A GPU does not build voltage. The manual is 170 pages. The experienced technician who knew the unit retired. The new technician searches online and finds a forum post from 2011.
