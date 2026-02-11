@@ -80,8 +80,3 @@ queries.json
 # Example generated artifacts (not tracked)
 # =====================
 examples/output/
-
-# =====================
-# User test PDFs (canonical fixtures remain tracked)
-# =====================
-data/test_pdfs/
