@@ -30,7 +30,6 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/data
-      - ./data/test_pdfs:/app/data/test_pdfs
       - ./data/indexes:/app/indexes
       - ./data/evaluations:/app/evaluations
     environment:

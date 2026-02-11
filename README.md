@@ -223,9 +223,10 @@ No approximate nearest neighbor search. No stochastic retrieval layer.
 
 ```
 docker compose up -d --build
+# First time only, pulls ~4GB model
+docker compose exec ollama ollama pull llama3.1:8b
 docker compose exec ragops bash
-
-ragops run --pdf /app/data/test_pdfs/JETEX4D7003B.pdf
+ragops run --pdf /app/data/test_pdfs/ragops_semantic_test_pdf.pdf
 ```
 
 First model load may take one to two minutes. Later queries typically complete within 15 to 30 seconds depending on hardware.
