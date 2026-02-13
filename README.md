@@ -179,18 +179,46 @@ Full traceability.
 
 ## Architecture
 
-```
-PDF → hash + extract → chunk (400 tokens, 25 percent overlap)
-    → embeddings → versioned index → evaluation gate → promotion
+```mermaid
+flowchart TB
+    subgraph INGESTION["Ingestion Pipeline"]
+        PDF[PDF File]
+        HASH[Hash + Extract Text]
+        CHUNK[Sliding-Window Chunking<br/>400 tokens, 25% overlap]
+        EMBED_I[Embedding Engine<br/>BGE / Fake]
+        STORE[Vector Index Store]
+        EVAL[Evaluation Engine]
+        PROMOTE[Promotion<br/>active_index.json]
+        PDF --> HASH --> CHUNK --> EMBED_I --> STORE --> EVAL --> PROMOTE
+    end
 
-Query → embed
-      → semantic + keyword retrieval
-      → rank merge
-      → phrase bonus
-      → domain boost
-      → top chunks
-      → grounded inference
-      → cited answer or refusal
+    subgraph INFERENCE["Inference Pipeline"]
+        Q[Question]
+        RESOLVE[Resolve Active Index<br/>registry + active_index.json]
+        LOAD[Load Index]
+        EMBED_Q[Embed Query]
+        RETRIEVE[Retrieve<br/>BGE + BM25 RRF + phrase bonus]
+        HYBRID[Domain Boost<br/>optional]
+        CONTEXT[Assemble Context]
+        LLM[LLM Backend<br/>Ollama / Fake]
+        ANSWER[Answer + Citations]
+        Q --> RESOLVE --> LOAD --> EMBED_Q --> RETRIEVE --> HYBRID --> CONTEXT --> LLM --> ANSWER
+    end
+
+    subgraph STORAGE["Persistence"]
+        REGISTRY[(Registry)]
+        ACTIVE[(Active Index Pointer)]
+        INDEX[(Index Files<br/>v1.json, etc.)]
+        EVALS[(Evaluations)]
+    end
+
+    PROMOTE --> REGISTRY
+    PROMOTE --> ACTIVE
+    STORE --> INDEX
+    EVAL --> EVALS
+    RESOLVE --> REGISTRY
+    RESOLVE --> ACTIVE
+    LOAD --> INDEX
 ```
 
 ---
