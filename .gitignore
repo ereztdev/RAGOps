@@ -71,7 +71,8 @@ diff.patch
 # =====================
 # Generated indexes and evaluation outputs
 # =====================
-indexes/*.json
+indexes/
+data/indexes/
 evaluations/
 ingestion.json
 queries.json
