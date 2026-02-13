@@ -115,3 +115,69 @@
 
 **Answer:**
 The physical terminals for the water temperature switch are not specified in the provided text. However, it does mention "Place a clip-lead jumper wire on the water temperature switch terminals" as part of testing the overtemperature protection.  According to the text, if the engine starts properly after placing a clip-lead jumper wire on the water temperature switch terminals, it indicates that the water temperature switch is defective and should be replaced.   The exact temperature at which the component is designed to trip is not specified in the provided text.
+## 2026-02-13 23:20 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** The engine starts but stops within 5 seconds after the ignition switch is released to the run position. The technician suspects low oil pressure triggered the shutdown. How should they verify this using the diagnostic system, and what relay should they check if the cool down timer is the cause?
+
+
+### Query Analysis
+- Detected domains: ['Engine', 'Troubleshooting']
+
+### Retrieved Chunks
+1. **chunk_022_00** · Page 22 · Chapter 5 · Domain: Troubleshooting · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "Cause Remedy Engine and Controls (Cont’d) 4. Engine starts but stops in A. Igni tion switch run cont..."
+2. **chunk_027_01** · Page 27 · Domain: Troubleshooting · Confidence: 0.65 (↑ boosted from 0.48)
+   Preview: "(K10) will close when the #1 with the recept acle on the contact with the receptacle on the output c..."
+3. **chunk_020_02** · Page 20 · Domain: Troubleshooting · Confidence: 0.43 (↑ boosted from 0.48)
+   Preview: "is defective. Replace. G. Defective starter motor (B1). G. If the starter motor (B1) did not operate..."
+4. **chunk_018_03** · Page 18 · Domain: Engine · Confidence: 0.32 (↑ boosted from 0.48)
+   Preview: "radiator mounts. Creation:03.09 — 2009 2-3-1 Troubleshooting Troubleshooting 1. General Practice Bef..."
+5. **chunk_023_04** · Page 23 · Chapter 5 · Domain: Troubleshooting · Confidence: 0.00 (↑ boosted from 0.48)
+   Preview: "to G. Actuat or defective G. Replace actuator. rated speed when the engine (Deutz only). switch (S6)..."
+
+### Answer Provenance
+- Primary sources: 14fa1aca25c9a3ed8e05246a3c8a5ec4e8dc31a996931fc9b38239ce2da0385a, 5e2056bc19e453b6813126f175c789c2e23d5f7d1a982dbacc5b6400e9b85eff
+- Fallback sources: 40236a575cd1127e0a6b1b0fb455d520a3f2cf27077472ba59124c4d6406e330, 8506264f74880aec6ee4c36f8b4b81ae8f08bf5dae9a6f426a654f3476a0753d, da1dc2d555e58bdd57e243da15b8443ec37d45b361a038041700092429383603
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 8.3 s
+- **Part 2 (eval+ask):** 137.3 s
+
+**Answer:**
+To verify the suspected low oil pressure, the technician should hold in the diagnostic request switch (S5) to display the measured values and fault messages. If the shutdown was caused by low oil pressure, this will be indicated.  If the cool down timer is the cause, the technician should check relay K7.
+## 2026-02-13 23:31 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** The engine starts but stops within 5 seconds after the ignition switch is released to the run position. The technician suspects low oil pressure triggered the shutdown. How should they verify this using the diagnostic system, and what relay should they check if the cool down timer is the cause?
+
+
+### Query Analysis
+- Detected domains: ['Engine', 'Troubleshooting']
+
+### Retrieved Chunks
+1. **chunk_022_00** · Page 22 · Chapter 5 · Domain: Troubleshooting · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "Cause Remedy Engine and Controls (Cont’d) 4. Engine starts but stops in A. Igni tion switch run cont..."
+2. **chunk_027_01** · Page 27 · Domain: Troubleshooting · Confidence: 0.65 (↑ boosted from 0.48)
+   Preview: "(K10) will close when the #1 with the recept acle on the contact with the receptacle on the output c..."
+3. **chunk_020_02** · Page 20 · Domain: Troubleshooting · Confidence: 0.43 (↑ boosted from 0.48)
+   Preview: "is defective. Replace. G. Defective starter motor (B1). G. If the starter motor (B1) did not operate..."
+4. **chunk_018_03** · Page 18 · Domain: Engine · Confidence: 0.32 (↑ boosted from 0.48)
+   Preview: "radiator mounts. Creation:03.09 — 2009 2-3-1 Troubleshooting Troubleshooting 1. General Practice Bef..."
+5. **chunk_023_04** · Page 23 · Chapter 5 · Domain: Troubleshooting · Confidence: 0.00 (↑ boosted from 0.48)
+   Preview: "to G. Actuat or defective G. Replace actuator. rated speed when the engine (Deutz only). switch (S6)..."
+
+### Answer Provenance
+- Primary sources: 14fa1aca25c9a3ed8e05246a3c8a5ec4e8dc31a996931fc9b38239ce2da0385a, 5e2056bc19e453b6813126f175c789c2e23d5f7d1a982dbacc5b6400e9b85eff
+- Fallback sources: 40236a575cd1127e0a6b1b0fb455d520a3f2cf27077472ba59124c4d6406e330, 8506264f74880aec6ee4c36f8b4b81ae8f08bf5dae9a6f426a654f3476a0753d, da1dc2d555e58bdd57e243da15b8443ec37d45b361a038041700092429383603
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 12.1 s
+- **Part 2 (eval+ask):** 8.9 s
+
+**Answer:**
+To verify the suspected low oil pressure, the technician should hold in the diagnostic request switch (S5) to display the measured values and fault messages. If the shutdown was caused by low oil pressure, this will be indicated.  If the cool down timer is the cause, the technician should check relay K7.
