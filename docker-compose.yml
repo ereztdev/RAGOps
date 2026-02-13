@@ -1,39 +1,26 @@
 services:
   ollama:
     image: ollama/ollama:latest
-    volumes:
-      - ollama_models:/root/.ollama
-    networks:
-      - ragops-net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
     environment:
-      # Keep model loaded 10m between requests (avoids ~1–2 min cold start per ask)
-      OLLAMA_KEEP_ALIVE: "10m"
-    # Uncomment for NVIDIA GPU (requires nvidia-container-toolkit):
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-    healthcheck:
-      # Official ollama/ollama image has no curl/wget; use ollama list to probe API
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
   ragops:
     build: .
     depends_on:
-      ollama:
-        condition: service_healthy
+      - ollama
     volumes:
       - ./data:/app/data
       - ./data/indexes:/app/indexes
       - ./data/evaluations:/app/evaluations
     environment:
-      OLLAMA_HOST: http://ollama:11434
+      - OLLAMA_HOST=http://ollama:11434
     networks:
       - ragops-net
     working_dir: /app

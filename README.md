@@ -245,6 +245,18 @@ No approximate nearest neighbor search. No stochastic retrieval layer.
 
 ---
 
+## Prerequisites
+
+This project is **NVIDIA-only**. RAGOps requires an NVIDIA GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html). Validate your setup with:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.0-base-ubuntu22.04 nvidia-smi
+```
+
+If this command fails, install the toolkit before running the stack.
+
+---
+
 ## Getting Started
 
 ### Docker
