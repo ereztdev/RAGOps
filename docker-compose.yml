@@ -1,12 +1,18 @@
 services:
   ollama:
     image: ollama/ollama:latest
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
+    # === GPU ACCELERATION (NVIDIA) ===
+    # 1. sudo apt install nvidia-container-toolkit
+    # 2. sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker
+    # 3. Verify: docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
+    # 4. Uncomment below, then: docker compose up -d
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility

@@ -1,0 +1,141 @@
+{
+  "manual": "TLD_285_Maintenance-Manual.pdf",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "DL-001",
+      "category": "direct_lookup",
+      "question": "What is the overvoltage protection trigger threshold and time delay?",
+      "expected_contains": ["130V", "2 seconds"],
+      "expected_domains": ["Generator"],
+      "expected_refusal": false,
+      "page": 28
+    },
+    {
+      "id": "DL-002",
+      "category": "direct_lookup",
+      "question": "What is the generator bearing lubrication interval?",
+      "expected_contains": ["2500", "hours"],
+      "expected_domains": ["Maintenance"],
+      "expected_refusal": false,
+      "page": 5
+    },
+    {
+      "id": "DL-003",
+      "category": "direct_lookup",
+      "question": "What oil viscosity grade is recommended for year round service?",
+      "expected_contains": ["15W-40"],
+      "expected_domains": ["Engine", "Maintenance"],
+      "expected_refusal": false,
+      "page": 7
+    },
+    {
+      "id": "PROC-001",
+      "category": "procedural",
+      "question": "What are the steps to replace the air filter?",
+      "expected_contains": ["turbocharger", "clamp"],
+      "expected_domains": ["Engine", "Maintenance"],
+      "expected_refusal": false,
+      "page": 7
+    },
+    {
+      "id": "PROC-002",
+      "category": "procedural",
+      "question": "How do you test if the auxiliary starter relay K4 is defective?",
+      "expected_contains": ["jumper wire", "terminals", "K4"],
+      "expected_domains": ["Engine", "Troubleshooting"],
+      "expected_refusal": false,
+      "page": 20
+    },
+    {
+      "id": "PROC-003",
+      "category": "procedural",
+      "question": "What is the procedure to verify the over-frequency protection is working correctly?",
+      "expected_contains": ["420 Hz", "5 seconds", "FAULT LATCHED"],
+      "expected_domains": ["Generator", "Troubleshooting"],
+      "expected_refusal": false,
+      "page": 29
+    },
+    {
+      "id": "CROSS-001",
+      "category": "cross_subsystem",
+      "question": "The engine starts but stops in 5 seconds after the ignition switch is released to run. What are all the possible causes and what relay is involved if the cool down timer is the problem?",
+      "expected_contains": ["S3", "K7", "oil pressure", "S5"],
+      "expected_domains": ["Engine", "Troubleshooting"],
+      "expected_refusal": false,
+      "page": 22
+    },
+    {
+      "id": "CROSS-002",
+      "category": "cross_subsystem",
+      "question": "The voltage does not build up after the rated speed switch S6 is held to up position. What engine-related cause could prevent voltage buildup?",
+      "expected_contains": ["rated speed", "ECM", "Electronic Control Module"],
+      "expected_domains": ["Generator", "Engine"],
+      "expected_refusal": false,
+      "page": 24
+    },
+    {
+      "id": "CROSS-003",
+      "category": "cross_subsystem",
+      "question": "What is the load contactor coil resistance for a Prestolite contactor versus a Contactor Industries contactor?",
+      "expected_contains": ["100 ohms", "700 ohms"],
+      "expected_domains": ["Electrical", "Generator"],
+      "expected_refusal": false,
+      "page": 26
+    },
+    {
+      "id": "REF-001",
+      "category": "refusal",
+      "question": "What is the APU bleed air pressure specification for this GPU?",
+      "expected_contains": [],
+      "expected_domains": [],
+      "expected_refusal": true,
+      "page": null
+    },
+    {
+      "id": "REF-002",
+      "category": "refusal",
+      "question": "What is the tire pressure specification for the GPU transport wheels?",
+      "expected_contains": [],
+      "expected_domains": [],
+      "expected_refusal": true,
+      "page": null
+    },
+    {
+      "id": "REF-003",
+      "category": "refusal",
+      "question": "What is the Hobart 4400 engine oil capacity?",
+      "expected_contains": [],
+      "expected_domains": [],
+      "expected_refusal": true,
+      "page": null
+    },
+    {
+      "id": "MH-001",
+      "category": "multi_hop",
+      "question": "If the over-frequency fault triggers during operation, what is the frequency threshold, the time delay, and what fault message should appear on the display?",
+      "expected_contains": ["420 Hz", "5 seconds", "FAULT LATCHED, OVER FREQUENCY"],
+      "expected_domains": ["Generator", "Troubleshooting"],
+      "expected_refusal": false,
+      "page": 29
+    },
+    {
+      "id": "MH-002",
+      "category": "multi_hop",
+      "question": "The under-voltage and under-frequency protections both have time delays. What are the two threshold values and their respective time delays?",
+      "expected_contains": ["100V", "7 seconds", "380 Hz"],
+      "expected_domains": ["Generator", "Troubleshooting"],
+      "expected_refusal": false,
+      "page": [28, 30]
+    },
+    {
+      "id": "MH-003",
+      "category": "multi_hop",
+      "question": "What torque value is required for the generator-to-flywheel housing bolts, and what torque is required for the drive plates to the flywheel?",
+      "expected_contains": ["33 LB-FT", "40 LB-FT"],
+      "expected_domains": ["Engine", "Generator"],
+      "expected_refusal": false,
+      "page": 15
+    }
+  ]
+}

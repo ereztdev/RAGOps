@@ -81,3 +81,8 @@ queries.json
 # Example generated artifacts (not tracked)
 # =====================
 examples/output/
+
+# =====================
+# Benchmark results
+# =====================
+tests/benchmark/results/

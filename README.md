@@ -11,7 +11,7 @@ No cloud dependency. No API keys. No data leaves your infrastructure.
 ---
 
 ### Progress towards main objective achieving >90% Accuracy on multi facted chunked targets
-- As of now, the whole E2E and retrieval pipeline is complete (hybrid search, phrase-match bonus, domain boosting[topic labeling => a *"closed envelope"])
+- E2E retrieval pipeline complete: hybrid search (BGE + BM25 via RRF), phrase-match bonus, domain-aware scoring with cross-contamination penalty
 - Initial manual testing: correct procedure identification on JETEX 4D queries
 - Benchmark harness designed; corpus build in progress (50-100 Q&A pairs from GSE manuals)
 - Youtube video where I'm going over:
@@ -271,6 +271,14 @@ ragops run --pdf /app/data/test_pdfs/ragops_semantic_test_pdf.pdf
 
 First model load may take one to two minutes. Later queries typically complete within 15 to 30 seconds depending on hardware.
 
+#### GPU Acceleration (Optional)
+
+Ollama uses GPU automatically when configured. Install nvidia-container-toolkit, uncomment the deploy block in docker-compose.yml, and rebuild. Expected speedup: ~110s (CPU) to ~9s (GPU) per query.
+
+For host-based development, run ollama natively and force embeddings to CPU:
+
+    CUDA_VISIBLE_DEVICES="" ragops run --pdf your_manual.pdf
+
 ### Local Install
 
 ```
@@ -312,6 +320,17 @@ ragops ask --query "Your troubleshooting question"
 * Ollama
 
 ---
+
+## Benchmarks
+
+| Category | Questions | Correct | Accuracy |
+|----------|-----------|---------|----------|
+| Direct lookup | 3 | - | -% |
+| Procedural | 3 | - | -% |
+| Cross-subsystem | 3 | - | -% |
+| Refusal | 3 | - | -% |
+| Multi-hop | 3 | - | -% |
+| **Overall** | **15** | **-** | **-%** |
 
 ## License
 

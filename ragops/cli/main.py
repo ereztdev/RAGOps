@@ -315,6 +315,8 @@ def cmd_promote(args: argparse.Namespace) -> int:
 def cmd_ask(args: argparse.Namespace) -> int:
     """ask --query "<question>" [--llm fake|ollama] [--model <ollama_model>]. Backend matches active index provenance (BGE or test-only)."""
     indexes_dir = Path(args.indexes_dir)
+    if getattr(args, "pdf_stem", None):
+        indexes_dir = indexes_dir / args.pdf_stem
     try:
         _index_version_id, index_path = resolve_active_index(
             indexes_dir / "registry.json", indexes_dir / "active_index.json"
@@ -670,6 +672,11 @@ def main() -> int:
     # ask
     p_ask = subparsers.add_parser("ask", help="Answer question using active index only")
     _add_indexes_dir(p_ask)
+    p_ask.add_argument(
+        "--pdf-stem",
+        default=None,
+        help="PDF stem subfolder under indexes-dir (e.g., TLD_285_Maintenance-Manual)"
+    )
     p_ask.add_argument("--query", required=True, help="Question to answer")
     p_ask.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, dest="top_k", help=f"Top-k for retrieval (default: {DEFAULT_TOP_K})")
     p_ask.add_argument("--llm", choices=["fake", "ollama"], default="ollama", help="Inference backend (default: ollama)")

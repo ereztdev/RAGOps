@@ -181,3 +181,69 @@ To verify the suspected low oil pressure, the technician should hold in the diag
 
 **Answer:**
 To verify the suspected low oil pressure, the technician should hold in the diagnostic request switch (S5) to display the measured values and fault messages. If the shutdown was caused by low oil pressure, this will be indicated.  If the cool down timer is the cause, the technician should check relay K7.
+## 2026-02-14 00:25 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** what happens if the GPU is making weird noises?
+
+
+### Query Analysis
+- Detected domains: []
+
+### Retrieved Chunks
+1. **chunk_029_00** · Page 29 · Domain: Troubleshooting · Confidence: 1.00
+   Preview: "Toggle up increase frequency, toggle down decrease frequency. Increase frequency to 420 Hz and confi..."
+2. **chunk_026_01** · Page 26 · Domain: Troubleshooting · Confidence: 0.98
+   Preview: "contactor switch. C. Defective rectifier bridge C. With jumper wire connected in step B (CR1) above,..."
+3. **chunk_028_02** · Page 28 · Domain: Troubleshooting · Confidence: 0.02
+   Preview: "ON. Confirm that Over Voltage threshold is 130V. Confirm that the display shows “FAULT LATCHED, OVER..."
+4. **chunk_025_03** · Page 25 · Domain: Troubleshooting · Confidence: 0.00
+   Preview: "voltmeter to check the operation of the generator output. Calibrate or replace as required. C. Fault..."
+5. **chunk_023_04** · Page 23 · Chapter 5 · Domain: Troubleshooting · Confidence: 0.00
+   Preview: "to G. Actuat or defective G. Replace actuator. rated speed when the engine (Deutz only). switch (S6)..."
+
+### Answer Provenance
+- Primary sources: 756d6a5e8af779a1b693d984151cb7f69137b1929ec027e56693a371cf7dd19b, c18f5244b88b593a8e9aefcb7d11c4d4200f4a3f9d97a0831a79f0a12ce4031e
+- Fallback sources: c24795b3bd71e15139eba59700604a76c1db26a7678a19be070cff8bea263d1a, 0877c56c0f1b047ed9cd0adfc0c303a6cfbe216328b1caf611cf3e108d5f45fc, da1dc2d555e58bdd57e243da15b8443ec37d45b361a038041700092429383603
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 11.9 s
+- **Part 2 (eval+ask):** 66.1 s
+
+**Answer:**
+I cannot answer questions that are not based on the provided text. The text does not mention anything about the GPU making weird noises. Is there something else I can help you with?
+## 2026-02-14 22:24 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** what to do when its raining
+
+
+### Query Analysis
+- Detected domains: []
+
+### Retrieved Chunks
+1. **chunk_004_00** · Page 4 · Chapter 1 · Domain: Troubleshooting · Confidence: 1.00
+   Preview: "in diesel engines operated under light load. Light loads do not allow the engine to reach the most e..."
+2. **chunk_015_01** · Page 15 · Chapter 5 · Domain: Engine · Confidence: 0.71
+   Preview: "to 75 LB-FT. (6) Replace the screen cover. (7) Measure the shaft extension and compare it to the dim..."
+3. **chunk_018_02** · Page 18 · Domain: Engine · Confidence: 0.17
+   Preview: "radiator mounts. Creation:03.09 — 2009 2-3-1 Troubleshooting Troubleshooting 1. General Practice Bef..."
+4. **chunk_010_03** · Page 10 · Chapter 5 · Domain: Generator · Confidence: 0.15
+   Preview: "5 for more information. (1) Cleaning When inspection determines cleaning is necessary, clean the gen..."
+5. **chunk_011_04** · Page 11 · Domain: Engine · Confidence: 0.00
+   Preview: "FLAME TO COME NEAR THE BATTERY. AVOID SPILLING ELECTROLYTE ON HANDS OR CLOTHING. NOTE: It is especia..."
+
+### Answer Provenance
+- Primary sources: 91bb2ad0346b380fbcde60047ab66d7b105e862f9a704574b1cec05271c753b1, 7edb99e3819ebe8b97a6a3f21d6e389ab0c783b5a82c0838364c887e5d0d0eee
+- Fallback sources: 8506264f74880aec6ee4c36f8b4b81ae8f08bf5dae9a6f426a654f3476a0753d, 8202172026456a9d6d53acc3e67a43b96b1f39c1dd91268d6d3c242f93c06c59, 55b984f66b612ff5fa42713324b9041cbe07fd0666e42f6914b38149a37acf27
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 11.8 s
+- **Part 2 (eval+ask):** 5.5 s
+
+**Answer:**
+I cannot find any information in the provided context about what to do when it is raining.

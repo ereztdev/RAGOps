@@ -27,6 +27,51 @@ logger = logging.getLogger("ragops.retrieval")
 # Deterministic float format for serialization (no scientific notation drift).
 _FLOAT_FORMAT = ".17g"
 
+# Domain keyword map for query-domain detection and score adjustment.
+DOMAIN_KEYWORDS: dict[str, list[str]] = {
+    "Engine": ["engine", "starter", "fuel", "throttle", "rpm", "combustion", "ignition",
+               "coolant", "radiator", "oil pressure", "governor", "crankshaft",
+               "water temperature", "overtemperature", "engine switch", "ecm",
+               "idle", "exhaust", "muffler", "injector", "fuel pump", "oil viscosity"],
+    "Generator": ["generator", "voltage", "frequency", "hertz", "hz", "exciter",
+                  "stator", "rotor", "winding", "field", "avr", "regulator",
+                  "overvoltage", "undervoltage", "kilowatt", "kw", "kva",
+                  "load contactor", "build voltage", "revolving field", "phase",
+                  "scr", "rectifier", "400 hz"],
+    "Electrical": ["circuit", "breaker", "fuse", "relay", "contactor", "terminal",
+                   "wire", "wiring", "connector", "ground", "ampere", "amp",
+                   "transformer", "battery", "vdc", "vac"],
+    "Troubleshooting": ["fault", "troubleshoot", "diagnose", "symptom", "failure",
+                        "malfunction", "error", "warning", "alarm", "trip",
+                        "shutdown", "does not", "won't", "fails to", "defective"],
+    "Maintenance": ["lubrication", "filter", "coolant", "belt", "maintenance",
+                    "inspection", "interval", "hours", "grease", "oil change"],
+}
+
+
+def _detect_query_domains(query: str) -> list[str]:
+    """Return domains matching query keywords, sorted by match count descending."""
+    query_lower = query.lower()
+    counts = {}
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        count = sum(1 for kw in keywords if kw in query_lower)
+        if count > 0:
+            counts[domain] = count
+    return sorted(counts, key=counts.get, reverse=True)
+
+
+def _domain_score_adjustment(query_domains: list[str], chunk_domain_hint: str | None,
+                            boost: float = 0.15, penalty: float = -0.10) -> float:
+    """Boost same-domain chunks, penalize cross-domain. Troubleshooting never penalized."""
+    if not chunk_domain_hint or not query_domains:
+        return 0.0
+    hint_lower = chunk_domain_hint.lower()
+    if any(d.lower() == hint_lower for d in query_domains):
+        return boost
+    if hint_lower == "troubleshooting":
+        return 0.0
+    return penalty
+
 
 # ---------------------------------------------------------------------------
 # In-memory index (no vector storage layer yet)
@@ -374,9 +419,14 @@ def retrieve(
         phrase_bonuses.append(bonus)
     scores_with_phrase = [s + b for s, b in zip(final_scores, phrase_bonuses)]
 
+    # Domain-aware score adjustment: boost same-domain, penalize cross-domain
+    query_domains = _detect_query_domains(query)
+    domain_adjustments = [_domain_score_adjustment(query_domains, e.domain_hint) for e in index.entries]
+    final_scores_adjusted = [s + d for s, d in zip(scores_with_phrase, domain_adjustments)]
+
     # Sort by final score descending, then chunk_id for determinism
     scored: list[tuple[float, IndexEntry]] = list(
-        zip(scores_with_phrase, index.entries)
+        zip(final_scores_adjusted, index.entries)
     )
     scored.sort(key=lambda x: (-x[0], x[1].chunk_id))
 
@@ -386,19 +436,23 @@ def retrieve(
 
     hits: list[RetrievalHit] = []
     for score, entry in top_pairs:
+        idx = index.entries.index(entry)
+        adj = domain_adjustments[idx]
+        boosted = adj != 0.0
+        original_score = scores_with_phrase[idx] if boosted else None
         hit = RetrievalHit(
             chunk_id=entry.chunk_id,
             document_id=entry.document_id,
             raw_text=entry.raw_text,
             embedding_vector_id=entry.embedding_vector_id,
             index_version=index.index_version_id,
-            similarity_score=score,  # final_score (hybrid or BGE-only)
+            similarity_score=score,  # final_score (hybrid or BGE-only) + domain adjustment
             page_number=entry.page_number,
             chapter=entry.chapter,
             section=entry.section,
             domain_hint=entry.domain_hint,
-            boosted=False,
-            original_score=None,
+            boosted=boosted,
+            original_score=original_score,
         )
         hits.append(hit)
 
@@ -420,6 +474,7 @@ def retrieve(
         "top_k": top_k,
         "hybrid": hybrid_config is not None,
         "returned_chunk_ids": [h.chunk_id for h in hits],
+        "detected_domains": query_domains,
     }
     if phrase_bonuses:
         log_payload["phrase_bonus_max"] = max(phrase_bonuses)
