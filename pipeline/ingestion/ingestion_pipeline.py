@@ -1,10 +1,12 @@
 """
 Ingestion pipeline: responsible for hashing, parsing, and chunking documents.
 Emits typed Document and Chunk; serializes output using the canonical schema.
-Uses ragops.ingest.pdf_parser for per-page metadata (chapter, section, domain_hint).
+Uses Docling when available for structure-aware parsing; falls back to pypdf + sliding window.
+Uses ragops.ingest.pdf_parser for per-page metadata (chapter, section, domain_hint) in fallback path.
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -20,10 +22,13 @@ from core.schema import (
 from core.serialization import write_ingestion_output
 from pypdf import PdfReader
 
+from ragops.ingest.docling_parser import is_docling_available, parse_pdf_with_docling
 from ragops.ingest.pdf_parser import (
     extract_metadata_from_page_text,
     PageMetadata,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _simple_tokenize(text: str) -> list[str]:
@@ -140,6 +145,48 @@ def run_ingestion_pipeline(
     if source_type not in ("pdf", "md", "txt"):
         source_type = "pdf" if path.lower().endswith(".pdf") else "bin"
 
+    if is_docling_available():
+        logger.info("Using Docling for structure-aware parsing")
+        try:
+            docling_chunks = parse_pdf_with_docling(path, max_tokens=400)
+        except Exception as e:
+            logger.warning("Docling parsing failed, falling back to pypdf: %s", e)
+            docling_chunks = []
+        if docling_chunks:
+            chunks = []
+            for i, dc in enumerate(docling_chunks):
+                page_number = dc.get("page_number")
+                if page_number is None:
+                    page_number = 1
+                key = chunk_key(document_id, page_number)
+                cid = chunk_id_from_components(
+                    document_id, source_type, page_number, i
+                )
+                chunk = Chunk(
+                    chunk_id=cid,
+                    chunk_key=key,
+                    document_id=document_id,
+                    source_type=source_type,
+                    page_number=page_number,
+                    chunk_index=i,
+                    text=dc["raw_text"],
+                    chapter=dc.get("chapter"),
+                    section=dc.get("section"),
+                    domain_hint=dc.get("domain_hint"),
+                )
+                chunks.append(chunk)
+            document = Document(
+                document_id=document_id,
+                source_path=path,
+                chunks=chunks,
+            )
+            if output_path is not None:
+                write_ingestion_output(document, output_path)
+            return document
+        logger.info("Docling produced no chunks, falling back to pypdf")
+
+    # Fallback: pypdf + sliding window
+    logger.info("Docling not available, falling back to pypdf")
     try:
         reader = PdfReader(path)
     except Exception as e:

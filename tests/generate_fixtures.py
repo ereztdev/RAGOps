@@ -1,8 +1,9 @@
 """
 Generate golden fixtures for Segment 10 regression tests.
-Run from repo root: python tests/generate_fixtures.py
+Run from repo root: PYTHONPATH=. python tests/generate_fixtures.py
 Uses known test input: data/test_pdfs/ragops_semantic_test_pdf.pdf
 Writes deterministic JSON to tests/fixtures/.
+PYTHONPATH=. ensures local code is used (required when Docling is installed).
 """
 from __future__ import annotations
 

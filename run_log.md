@@ -247,3 +247,102 @@ I cannot answer questions that are not based on the provided text. The text does
 
 **Answer:**
 I cannot find any information in the provided context about what to do when it is raining.
+## 2026-02-17 19:21 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** fake
+- **Question:** What are the steps to replace the air filter?
+
+
+### Query Analysis
+- Detected domains: []
+
+### Retrieved Chunks
+1. **chunk_033_00** · Page 33 · Domain: Generator · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "compensate for the increased resistance in the cable. The goal is to maintain 115 VAC at the load ba..."
+2. **chunk_033_01** · Page 33 · Domain: Generator · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "eliminates the need for periodic switch and relay setting adjustments. The following is a list of ad..."
+3. **chunk_020_02** · Page 20 · Domain: Troubleshooting · Confidence: 0.03
+   Preview: "is defective. Replace. G. Defective starter motor (B1). G. If the starter motor (B1) did not operate..."
+4. **chunk_023_03** · Page 23 · Chapter 5 · Domain: Troubleshooting · Confidence: 0.03
+   Preview: "to G. Actuat or defective G. Replace actuator. rated speed when the engine (Deutz only). switch (S6)..."
+5. **chunk_026_04** · Page 26 · Domain: Troubleshooting · Confidence: 0.00
+   Preview: "contactor switch. C. Defective rectifier bridge C. With jumper wire connected in step B (CR1) above,..."
+
+### Answer Provenance
+- Primary sources: 278c9405170850256b58838fe5099ee4d57a99fbe8eccf247020593eecfe5cf3, 9339c69b63fce0e60fd851cbac879c5d357e699e94128eab6d08952cc56e9d67
+- Fallback sources: 40236a575cd1127e0a6b1b0fb455d520a3f2cf27077472ba59124c4d6406e330, da1dc2d555e58bdd57e243da15b8443ec37d45b361a038041700092429383603, c18f5244b88b593a8e9aefcb7d11c4d4200f4a3f9d97a0831a79f0a12ce4031e
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 14.2 s
+- **Part 2 (eval+ask):** 0.1 s
+
+**Answer:**
+compensate for the increased resistance in the cable.
+## 2026-02-17 19:38 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 33
+- **Chunks:** 23 · **Tokens (approx):** 11,797
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** What are the steps to replace the air filter?
+
+
+### Query Analysis
+- Detected domains: []
+
+### Retrieved Chunks
+1. **chunk_033_00** · Page 33 · Domain: Generator · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "compensate for the increased resistance in the cable. The goal is to maintain 115 VAC at the load ba..."
+2. **chunk_033_01** · Page 33 · Domain: Generator · Confidence: 1.00 (↑ boosted from 0.48)
+   Preview: "eliminates the need for periodic switch and relay setting adjustments. The following is a list of ad..."
+3. **chunk_020_02** · Page 20 · Domain: Troubleshooting · Confidence: 0.03
+   Preview: "is defective. Replace. G. Defective starter motor (B1). G. If the starter motor (B1) did not operate..."
+4. **chunk_023_03** · Page 23 · Chapter 5 · Domain: Troubleshooting · Confidence: 0.03
+   Preview: "to G. Actuat or defective G. Replace actuator. rated speed when the engine (Deutz only). switch (S6)..."
+5. **chunk_026_04** · Page 26 · Domain: Troubleshooting · Confidence: 0.00
+   Preview: "contactor switch. C. Defective rectifier bridge C. With jumper wire connected in step B (CR1) above,..."
+
+### Answer Provenance
+- Primary sources: 278c9405170850256b58838fe5099ee4d57a99fbe8eccf247020593eecfe5cf3, 9339c69b63fce0e60fd851cbac879c5d357e699e94128eab6d08952cc56e9d67
+- Fallback sources: 40236a575cd1127e0a6b1b0fb455d520a3f2cf27077472ba59124c4d6406e330, da1dc2d555e58bdd57e243da15b8443ec37d45b361a038041700092429383603, c18f5244b88b593a8e9aefcb7d11c4d4200f4a3f9d97a0831a79f0a12ce4031e
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 13.3 s
+- **Part 2 (eval+ask):** 89.6 s
+
+**Answer:**
+I cannot find the answer in the provided context. The context does not contain information about replacing an air filter.
+## 2026-02-17 19:56 — TLD_285_Maintenance-Manual.pdf
+- **PDF:** TLD_285_Maintenance-Manual.pdf · 318 KB · **Pages:** 1
+- **Chunks:** 113 · **Tokens (approx):** 10,635
+- **Index version:** v1
+- **Model:** llama3.1:8b
+- **Question:** What are the steps to replace the air filter?
+
+
+### Query Analysis
+- Detected domains: []
+
+### Retrieved Chunks
+1. **chunk_001_00** · Page 1 · Section Remedy · Domain: Maintenance · Confidence: 1.00 (↑ boosted from 0.33)
+   Preview: "Remedy - G. Replace actuator. - H. Replace pump.  Contact the engine manufacturer. - A.  Engine prog..."
+2. **chunk_001_01** · Page 1 · Section Remedy · Domain: Maintenance · Confidence: 0.99 (↑ boosted from 0.33)
+   Preview: "Remedy Plugged or defective fuel filter.. 3.Engine will not start. Cranking speed normal., 2 = D. Ch..."
+3. **chunk_001_02** · Page 1 · Section B. Maintenance Personnel Adjustments · Domain: Generator · Confidence: 0.29 (↑ boosted from 0.47)
+   Preview: "B. Maintenance Personnel Adjustments 2. 400 Hz AC voltage setting - adjustable from 96 to 136 VAC, n..."
+4. **chunk_001_03** · Page 1 · Section (1) Air Filter Replacement (See Figure 1) · Domain: Maintenance · Confidence: 0.02 (↑ boosted from 0.18)
+   Preview: "(1) Air Filter Replacement (See Figure 1) - (a) Loosen the clamp on the turbocharger intake. - (b) L..."
+5. **chunk_001_04** · Page 1 · Section C. Air Filter · Domain: Maintenance · Confidence: 0.00 (↑ boosted from 0.18)
+   Preview: "C. Air Filter The air filter is a dry disposable type with an integral filter element.  A definite t..."
+
+### Answer Provenance
+- Primary sources: 15103fa5039ca1928407448b5a9572422ff3ce8b70b88ca3838daf847203c71f, 0c9eaa6c095089d0d4a5bec486d5f9fca62295a394dc906e4aeacd6fce7baa3c
+- Fallback sources: 24cb29f63774903259177864c25b58d2ceb5c91086b3ebbf050be3051ddcd355, 28b0765c35a25b7914c4905b6c90f9cbbc8b7a50cacd4fc9c20caae55ee819f7, 8064f9aaced8926247c324b73c5dd4f66c27a26ea43af0d1b2ee93d88d89f693
+- Answer grounded in: 5 chunks from TLD_285_Maintenance-Manual.pdf
+
+- **Part 1 (ingest+build):** 240.3 s
+- **Part 2 (eval+ask):** 120.3 s
+
+**Answer:**
+- (a) Loosen the clamp on the turbocharger intake. - (b) Loosen the clamp on the air filter. - (c) Remove the air filter and discard. DO NOT ATTEMPT TO CLEAN OR REUSE THE AIR FILTER. - (d) Install a new air filter. - (e) Tighten the clamp on the turbocharger. - (f) Tighten the clamp on the air filter.

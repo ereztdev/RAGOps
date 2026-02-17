@@ -4,5 +4,8 @@ sentence-transformers>=2.2.0
 Pillow>=9.1.0
 pypdf>=3.0.0
 
+# Optional: Docling for structure-aware PDF parsing (falls back to pypdf if not installed)
+docling>=2.70.0
+
 # Optional: Ollama inference backend (pip install ollama). Code works without it (--llm fake).
 ollama>=0.1.0

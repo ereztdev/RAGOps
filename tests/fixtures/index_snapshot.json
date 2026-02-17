@@ -3,17 +3,20 @@
     {
       "chunk_id": "6536e63580255b97b8b6d5f30de3239e98698339a2a8dc0084a0227c3ce52eee",
       "document_id": "c7e600d99f24cd7b20ed1063fe0fe549d9791c37def73c0daf84d4f9e34e47a1",
-      "embedding_vector_id": "6916222ebb46f361dfa5af00a213c1cb345b974a7349095bbdfd22f875b3c0c0",
-      "raw_text": "RAGOps Semantic Test Corpus Purpose: semantic retrieval testing using fictional definitions. Generated: 2026-01-31 GLARB-GLARB (noun): A ceremonial farming tool used by the ancient settlers of planet Jiro to cultivate frozen soil. LINGLINGDONG (noun): A mystical musical instrument crafted by monks of the Nebulon Mountains to communicate with migrating clouds. FLURBO (noun): A fictional green alien species that thrives on low-temperature planets and trades in luminous crystals. ZORPLESTONE (noun): A floating mineral believed to store memories of solar storms and used as a navigation aid by star sailors. QUARMITE (noun): A rare herbal compound consumed by inhabitants of planet Quarm to enhance night vision during lunar eclipses. NEBULITE (noun): A synthetic alloy invented by the engineers of Andromeda Outpost for constructing lightweight orbital bridges. KRYPTA-BLOOM (noun): A bioluminescent flower that opens only during meteor showers and emits harmonic vibrations. ORBITAL TEAKETTLE (noun): An ancient heating device designed to boil liquids in zero gravity using magnetic resonance. Example questions: What is GLARB-GLARB? What does NEBULITE describe?",
+      "domain_hint": "Engine",
+      "embedding_vector_id": "ef735ed5a755fa8dc5fa3959df12e3ea65bc4f1a21c798077b096e3515bfeeec",
+      "page_number": 1,
+      "raw_text": "RAGOps Semantic Test Corpus\nPurpose: semantic retrieval testing using fictional definitions.\nGenerated: 2026-01-31\nGLARB-GLARB (noun): A ceremonial farming tool used by the ancient settlers of planet Jiro to cultivate frozen soil.\nLINGLINGDONG (noun): A mystical musical instrument crafted by monks of the Nebulon Mountains to communicate with migrating clouds.\nFLURBO (noun): A fictional green alien species that thrives on low-temperature planets and trades in luminous crystals.\nZORPLESTONE (noun): A floating mineral believed to store memories of solar storms and used as a navigation aid by star sailors.\nQUARMITE (noun): A rare herbal compound consumed by inhabitants of planet Quarm to enhance night vision during lunar eclipses.\nNEBULITE (noun): A synthetic alloy invented by the engineers of Andromeda Outpost for constructing lightweight orbital bridges.\nKRYPTA-BLOOM (noun): A bioluminescent flower that opens only during meteor showers and emits harmonic vibrations.\nORBITAL TEAKETTLE (noun): An ancient heating device designed to boil liquids in zero gravity using magnetic resonance.",
+      "section": "RAGOps Semantic Test Corpus",
       "vector": [
-        "-0.8883843393476607",
-        "0.053259253992354205",
-        "0.17666905521260068",
-        "-0.85778522671097202",
-        "-0.68440643031355286",
-        "0.21080343109127297",
-        "-0.71465052185331035",
-        "0.14104701072957693"
+        "0.84965556852969137",
+        "-0.078803885299155385",
+        "0.73379226575316503",
+        "-0.96921350619253399",
+        "0.24082824179941231",
+        "-0.38540805102577813",
+        "-0.168489380352427",
+        "-0.26677877608071021"
       ]
     }
   ],

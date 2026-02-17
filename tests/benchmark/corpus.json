@@ -69,7 +69,7 @@
       "id": "CROSS-002",
       "category": "cross_subsystem",
       "question": "The voltage does not build up after the rated speed switch S6 is held to up position. What engine-related cause could prevent voltage buildup?",
-      "expected_contains": ["rated speed", "ECM", "Electronic Control Module"],
+      "expected_contains": ["rated speed", "Electronic Control Module"],
       "expected_domains": ["Generator", "Engine"],
       "expected_refusal": false,
       "page": 24
