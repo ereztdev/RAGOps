@@ -11,6 +11,7 @@ No cloud dependency. No API keys. No data leaves your infrastructure.
 ---
 
 ### Progress towards main objective achieving >90% Accuracy on multi facted chunked targets
+- **Benchmark: 80% (12/15)** on TLD 285 manual — procedural and refusal at 100%; Docling structure-aware parsing (113 chunks vs 23 sliding-window)
 - E2E retrieval pipeline complete: hybrid search (BGE + BM25 via RRF), phrase-match bonus, domain-aware scoring with cross-contamination penalty
 - Initial manual testing: correct procedure identification on JETEX 4D queries
 - Benchmark harness designed; corpus build in progress (50-100 Q&A pairs from GSE manuals)
@@ -120,8 +121,8 @@ For military, government, or regulated operators, this is required.
 
 ### Ingest
 
-* Parse PDF
-* Sliding window chunking at 400 tokens with 25 percent overlap
+* Parse PDF (Docling structure-aware when available, else pypdf)
+* Chunking: Docling HybridChunker (max 400 tokens, BGE-aligned) or sliding window (400 tokens, 25% overlap) fallback
 * Generate embeddings locally
 * Maintain page traceability
 
@@ -184,7 +185,7 @@ flowchart TB
     subgraph INGESTION["Ingestion Pipeline"]
         PDF[PDF File]
         HASH[Hash + Extract Text]
-        CHUNK[Sliding-Window Chunking<br/>400 tokens, 25% overlap]
+        CHUNK[Docling HybridChunker /<br/>Sliding-Window fallback]
         EMBED_I[Embedding Engine<br/>BGE / Fake]
         STORE[Vector Index Store]
         EVAL[Evaluation Engine]
@@ -317,20 +318,23 @@ ragops ask --query "Your troubleshooting question"
 * Python 3.10 or higher
 * sentence transformers
 * pypdf
+* docling (optional; enables structure-aware PDF parsing; falls back to pypdf when absent)
 * Ollama
 
 ---
 
 ## Benchmarks
 
+Benchmark corpus: 15 questions from TLD_285_Maintenance-Manual.pdf (5 categories). Run: `python tests/benchmark/run_benchmark.py`.
+
 | Category | Questions | Correct | Accuracy |
 |----------|-----------|---------|----------|
-| Direct lookup | 3 | - | -% |
-| Procedural | 3 | - | -% |
-| Cross-subsystem | 3 | - | -% |
-| Refusal | 3 | - | -% |
-| Multi-hop | 3 | - | -% |
-| **Overall** | **15** | **-** | **-%** |
+| Direct lookup | 3 | 2 | 67% |
+| Procedural | 3 | 3 | 100% |
+| Cross-subsystem | 3 | 2 | 67% |
+| Refusal | 3 | 3 | 100% |
+| Multi-hop | 3 | 2 | 67% |
+| **Overall** | **15** | **12** | **80%** |
 
 ## License
 

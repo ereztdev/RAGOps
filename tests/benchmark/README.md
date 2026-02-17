@@ -2,7 +2,7 @@
 
 Benchmark harness for evaluating RAGOps retrieval and inference against the TLD 285 maintenance manual.
 
-**Benchmark: 73% accuracy (11/15)** — ceiling is chunk density, not model. Direct lookup and refusal at 100%. Remaining failures trace to multi-topic chunks diluting retrieval signal.
+**Benchmark: 80% accuracy (12/15)** — procedural and refusal at 100%. Docling structure-aware parsing (113 chunks) with top-k 10. Remaining: DL-002 (comma formatting), CROSS-001 (designator codes), MH-002 (table row confusion).
 
 ## What It Is
 
