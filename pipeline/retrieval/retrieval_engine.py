@@ -24,10 +24,23 @@ from pipeline.embedding.embedding_engine import EmbeddingBackend
 
 logger = logging.getLogger("ragops.retrieval")
 
+# BM25 cache: keyed by index_version_id to avoid rebuilding per query (bounded size)
+_BM25_CACHE: dict[str, Any] = {}
+_BM25_CACHE_MAX = 16
+
+
+def _evict_bm25_cache_if_needed() -> None:
+    """Evict one entry if cache is full (simple FIFO)."""
+    if len(_BM25_CACHE) >= _BM25_CACHE_MAX:
+        _BM25_CACHE.pop(next(iter(_BM25_CACHE)))
+
 # Deterministic float format for serialization (no scientific notation drift).
 _FLOAT_FORMAT = ".17g"
 
 # Domain keyword map for query-domain detection and score adjustment.
+# Precedence: when a term appears in multiple domains (e.g. "coolant" in Engine and Maintenance),
+# _detect_query_domains returns domains sorted by match count descending; first match wins for
+# same-domain boost. Overlapping terms are intentional for recall; order is stable.
 DOMAIN_KEYWORDS: dict[str, list[str]] = {
     "Engine": ["engine", "starter", "fuel", "throttle", "rpm", "combustion", "ignition",
                "coolant", "radiator", "oil pressure", "governor", "crankshaft",
@@ -400,11 +413,15 @@ def retrieve(
         # Phase 1 behavior: BGE-only
         final_scores = list(bge_scores)
     else:
-        # Hybrid: BGE + BM25 merged via RRF
+        # Hybrid: BGE + BM25 merged via RRF (cache BM25 per index to avoid rebuild per query)
         from pipeline.retrieval.bm25_backend import Bm25Backend
 
-        corpus = [entry.raw_text for entry in index.entries]
-        bm25 = Bm25Backend(corpus)
+        cache_key = index.index_version_id
+        if cache_key not in _BM25_CACHE:
+            _evict_bm25_cache_if_needed()
+            corpus = [entry.raw_text for entry in index.entries]
+            _BM25_CACHE[cache_key] = Bm25Backend(corpus)
+        bm25 = _BM25_CACHE[cache_key]
         bm25_scores = bm25.score(query)
         final_scores = _rrf_merge(
             bge_scores,
@@ -434,9 +451,12 @@ def retrieve(
     k = min(top_k, len(scored))
     top_pairs = scored[:k]
 
+    # O(1) lookup by chunk_id instead of O(n) index.entries.index(entry) per hit
+    chunk_id_to_idx = {e.chunk_id: i for i, e in enumerate(index.entries)}
+
     hits: list[RetrievalHit] = []
     for score, entry in top_pairs:
-        idx = index.entries.index(entry)
+        idx = chunk_id_to_idx[entry.chunk_id]
         adj = domain_adjustments[idx]
         boosted = adj != 0.0
         original_score = scores_with_phrase[idx] if boosted else None
@@ -479,7 +499,7 @@ def retrieve(
     if phrase_bonuses:
         log_payload["phrase_bonus_max"] = max(phrase_bonuses)
         log_payload["phrase_bonus_top_k"] = [
-            phrase_bonuses[index.entries.index(entry)]
+            phrase_bonuses[chunk_id_to_idx[entry.chunk_id]]
             for _sc, entry in scored[:k]
         ]
     logger.info("%s", json.dumps(log_payload, sort_keys=True))
