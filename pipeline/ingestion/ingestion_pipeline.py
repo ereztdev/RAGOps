@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from core.tokenizer import simple_tokenize
 from core.schema import (
     Chunk,
     ChunkingConfig,
@@ -29,11 +30,6 @@ from ragops.ingest.pdf_parser import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _simple_tokenize(text: str) -> list[str]:
-    """Simple whitespace tokenizer. Deterministic."""
-    return text.split()
 
 
 def _token_offset_to_page(
@@ -75,7 +71,7 @@ def _sliding_window_chunks(
     Returns:
         List of Chunk objects with deterministic chunk_ids and optional metadata
     """
-    tokens = _simple_tokenize(text)
+    tokens = simple_tokenize(text)
     if not tokens:
         return []
 
@@ -236,11 +232,11 @@ def run_ingestion_pipeline(
             page_metadata[page_number] = None
 
     # Token offsets per page: (page_number, start_token_idx, end_token_idx)
-    all_tokens = _simple_tokenize(full_text)
+    all_tokens = simple_tokenize(full_text)
     page_token_offsets: list[tuple[int, int, int]] = []
     offset = 0
     for page_number, text in page_texts:
-        page_tokens = _simple_tokenize(text)
+        page_tokens = simple_tokenize(text)
         start_idx = offset
         end_idx = offset + len(page_tokens)
         offset = end_idx
