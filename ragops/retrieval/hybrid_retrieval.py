@@ -146,3 +146,28 @@ def hybrid_retrieve(
         ),
         query_domains,
     )
+
+
+def retrieve_for_query(
+    query: str,
+    index: "IndexSnapshot",
+    backend: "EmbeddingBackend",
+    top_k: int,
+    hybrid_config: HybridRetrievalConfig | None = None,
+) -> tuple[RetrievalResult, list[str]]:
+    """
+    Central retrieval entry point: uses hybrid (domain-boosted) when enabled,
+    else plain engine retrieve. Returns (RetrievalResult, detected_domains).
+    """
+    if METADATA_BOOST_ENABLED:
+        return hybrid_retrieve(
+            query,
+            index,
+            backend,
+            final_top_k=top_k,
+            hybrid_config=hybrid_config or HybridRetrievalConfig(),
+        )
+    result = engine_retrieve(
+        query, index, backend, top_k=top_k, hybrid_config=hybrid_config
+    )
+    return result, []
