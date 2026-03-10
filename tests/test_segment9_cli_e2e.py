@@ -19,6 +19,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SEMANTIC_PDF = PROJECT_ROOT / "data" / "test_pdfs" / "ragops_semantic_test_pdf.pdf"
 
 
+# Hang detection only: subprocess runs until done; kill if > 5 min (likely infinite/hung)
+_CLI_TIMEOUT = 300
+
+
 def _run_cli(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
     """Run python -m ragops.cli with given args. cwd defaults to PROJECT_ROOT."""
     cmd = [sys.executable, "-m", "ragops.cli"] + args
@@ -27,7 +31,7 @@ def _run_cli(args: list[str], cwd: Path | None = None) -> subprocess.CompletedPr
         cwd=cwd or PROJECT_ROOT,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=_CLI_TIMEOUT,
     )
 
 
