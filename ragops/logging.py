@@ -4,7 +4,7 @@ confidence, domain_hint, boost indication, preview. Backward compatible with exi
 """
 from __future__ import annotations
 
-import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -36,7 +36,7 @@ def format_run_log_block(
     detected_domains) are provided, include Query Analysis and Retrieved Chunks and Answer Provenance.
     Otherwise use backward-compatible short format (no provenance).
     """
-    ts = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%d %H:%M")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     model_line = f"- **Model:** {model}\n" if model else ""
     question_line = f"- **Question:** {question.replace(chr(10), ' ')}\n" if question else ""
     answer_escaped = (answer or "(no answer recorded)").replace(chr(10), " ").strip()
@@ -91,10 +91,6 @@ def format_run_log_block(
     block += f"- **Part 1 (ingest+build):** {part1_sec:.1f} s\n"
     block += f"- **Part 2 (eval+ask):** {part2_sec:.1f} s\n\n"
     block += f"**Answer:**\n{answer_escaped}\n"
-    print(
-        f"DEBUG format_run_log: answer={answer[:100] if answer else None!r}, retrieval_result={retrieval_result is not None}, detected_domains={detected_domains!r}",
-        file=sys.stderr,
-    )
     return block
 
 

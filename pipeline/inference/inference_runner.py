@@ -28,11 +28,9 @@ from pipeline.retrieval.retrieval_engine import retrieve
 from storage.vector_index_store import load_index
 
 try:
-    from ragops.config import METADATA_BOOST_ENABLED
-    from ragops.retrieval.hybrid_retrieval import hybrid_retrieve
+    from ragops.retrieval.hybrid_retrieval import retrieve_for_query
 except ImportError:
-    METADATA_BOOST_ENABLED = False
-    hybrid_retrieve = None
+    retrieve_for_query = None
 
 
 # ---------------------------------------------------------------------------
@@ -184,12 +182,12 @@ def run_inference_using_active_index(
     if progress_callback:
         progress_callback("loaded_index", time.perf_counter() - t0)
 
-    if METADATA_BOOST_ENABLED and hybrid_retrieve is not None:
-        retrieval_result, detected_domains = hybrid_retrieve(
+    if retrieve_for_query is not None:
+        retrieval_result, detected_domains = retrieve_for_query(
             query,
             index,
             embedding_backend,
-            final_top_k=top_k,
+            top_k,
             hybrid_config=HybridRetrievalConfig(),
         )
     else:

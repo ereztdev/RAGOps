@@ -9,10 +9,7 @@ from __future__ import annotations
 import math
 from collections import Counter
 
-
-def _simple_tokenize(text: str) -> list[str]:
-    """Whitespace tokenizer (same as chunking). Deterministic."""
-    return text.split()
+from core.tokenizer import simple_tokenize
 
 
 class Bm25Backend:
@@ -49,7 +46,7 @@ class Bm25Backend:
         self.N = len(corpus)
 
         # Tokenize all documents
-        self.doc_tokens: list[list[str]] = [_simple_tokenize(doc) for doc in corpus]
+        self.doc_tokens: list[list[str]] = [simple_tokenize(doc) for doc in corpus]
         self.doc_lens = [len(tokens) for tokens in self.doc_tokens]
         self.avg_doc_len = sum(self.doc_lens) / self.N if self.N > 0 else 0.0
 
@@ -73,7 +70,7 @@ class Bm25Backend:
         if self.N == 0:
             return []
 
-        query_tokens = _simple_tokenize(query)
+        query_tokens = simple_tokenize(query)
         if not query_tokens:
             return [0.0] * self.N
 

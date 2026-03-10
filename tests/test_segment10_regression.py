@@ -61,6 +61,9 @@ class TestIngestionDeterminism(unittest.TestCase):
     def test_ingestion_output_matches_fixture(self) -> None:
         if not SEMANTIC_PDF.is_file():
             self.skipTest(f"Test input not found: {SEMANTIC_PDF}")
+        from ragops.ingest.docling_parser import is_docling_available
+        if not is_docling_available():
+            self.skipTest("Fixture generated with Docling; skipping when Docling unavailable")
         from pipeline.ingestion.ingestion_pipeline import run_ingestion_pipeline
         from core.serialization import ingestion_output_to_dict
 

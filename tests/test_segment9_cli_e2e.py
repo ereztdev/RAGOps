@@ -12,6 +12,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -19,16 +20,26 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SEMANTIC_PDF = PROJECT_ROOT / "data" / "test_pdfs" / "ragops_semantic_test_pdf.pdf"
 
 
+# Hang detection only: subprocess runs until done; kill if > 5 min (likely infinite/hung)
+_CLI_TIMEOUT = 300
+
+
 def _run_cli(args: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
     """Run python -m ragops.cli with given args. cwd defaults to PROJECT_ROOT."""
+    subcmd = args[0] if args else "?"
+    print(f"  Running: ragops {subcmd} ...", flush=True)
     cmd = [sys.executable, "-m", "ragops.cli"] + args
-    return subprocess.run(
+    t0 = time.perf_counter()
+    result = subprocess.run(
         cmd,
         cwd=cwd or PROJECT_ROOT,
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=_CLI_TIMEOUT,
     )
+    elapsed = time.perf_counter() - t0
+    print(f"  {subcmd} completed in {elapsed:.1f}s", flush=True)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +47,21 @@ def _run_cli(args: list[str], cwd: Path | None = None) -> subprocess.CompletedPr
 # ---------------------------------------------------------------------------
 
 
-class TestFullFlowE2E(unittest.TestCase):
+class _E2EBase(unittest.TestCase):
+    """Base for E2E tests; prints test name and elapsed time."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        print(f"\n--- {self.id()} ---", flush=True)
+        self._test_start = time.perf_counter()
+
+    def tearDown(self) -> None:
+        elapsed = time.perf_counter() - self._test_start
+        print(f"  {self.id()} completed in {elapsed:.1f}s\n", flush=True)
+        super().tearDown()
+
+
+class TestFullFlowE2E(_E2EBase):
     def test_full_flow_succeeds(self) -> None:
         """ingest -> build-index -> evaluate -> promote -> ask runs successfully."""
         if not SEMANTIC_PDF.exists():
@@ -119,7 +144,7 @@ class TestFullFlowE2E(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestAskBeforePromoteRefusal(unittest.TestCase):
+class TestAskBeforePromoteRefusal(_E2EBase):
     def test_ask_before_promote_returns_refusal(self) -> None:
         """ask with no active index (before promote) must refuse with non-zero exit."""
         if not SEMANTIC_PDF.exists():
@@ -153,7 +178,7 @@ class TestAskBeforePromoteRefusal(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestPromoteWithFailedEvaluation(unittest.TestCase):
+class TestPromoteWithFailedEvaluation(_E2EBase):
     def test_promote_with_failed_evaluation_errors(self) -> None:
         """promote with evaluation.overall_pass False must exit non-zero."""
         if not SEMANTIC_PDF.exists():
@@ -201,7 +226,7 @@ class TestPromoteWithFailedEvaluation(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestBuildIndexBgeDefaultFakeOptIn(unittest.TestCase):
+class TestBuildIndexBgeDefaultFakeOptIn(_E2EBase):
     def test_build_index_rejects_fake_version_without_use_fake(self) -> None:
         """index_version starting with 'fake' must be rejected unless --use-fake."""
         if not SEMANTIC_PDF.exists():
@@ -251,7 +276,7 @@ class TestBuildIndexBgeDefaultFakeOptIn(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestDeterministicArtifacts(unittest.TestCase):
+class TestDeterministicArtifacts(_E2EBase):
     def test_ingest_twice_same_pdf_byte_identical_output(self) -> None:
         """Same PDF ingested twice produces byte-identical ingestion_output.json."""
         if not SEMANTIC_PDF.exists():

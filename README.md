@@ -242,7 +242,7 @@ No approximate nearest neighbor search. No stochastic retrieval layer.
 * Model: Llama 3.1 8B via Ollama
 * Search: Cosine similarity plus BM25
 * Storage: JSON versioned indexes
-* Tests: 119 passing
+* Tests: 131 passing
 
 ---
 

@@ -44,6 +44,9 @@ from pipeline.promotion.index_registry import (
 )
 from pipeline.promotion.promoter import (
     EvaluationFailedError,
+    IndexNotInRegistryError,
+    IndexVersionMismatchError,
+    PromotionError,
     promote_index,
 )
 from core.schema import HybridRetrievalConfig
@@ -306,7 +309,13 @@ def cmd_promote(args: argparse.Namespace) -> int:
     except EvaluationFailedError:
         print("promote error: evaluation did not pass; promotion refused", file=sys.stderr)
         return 1
-    except Exception as e:
+    except IndexNotInRegistryError as e:
+        print(f"promote error: {e}", file=sys.stderr)
+        return 1
+    except IndexVersionMismatchError as e:
+        print(f"promote error: {e}", file=sys.stderr)
+        return 1
+    except PromotionError as e:
         print(f"promote error: {e}", file=sys.stderr)
         return 1
     return 0
@@ -461,19 +470,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     config = _eval_config_from_args(args)
     index = load_index(index_path)
     try:
-        from ragops.config import METADATA_BOOST_ENABLED
-        from ragops.retrieval.hybrid_retrieval import hybrid_retrieve
-        if METADATA_BOOST_ENABLED and hybrid_retrieve is not None:
-            retrieval_result, _ = hybrid_retrieve(
-                question, index, backend_emb,
-                final_top_k=top_k,
-                hybrid_config=HybridRetrievalConfig(),
-            )
-        else:
-            retrieval_result = retrieve(
-                question, index, backend_emb, top_k,
-                hybrid_config=HybridRetrievalConfig(),
-            )
+        from ragops.retrieval.hybrid_retrieval import retrieve_for_query
+        retrieval_result, _ = retrieve_for_query(
+            question, index, backend_emb, top_k,
+            hybrid_config=HybridRetrievalConfig(),
+        )
     except ImportError:
         retrieval_result = retrieve(
             question, index, backend_emb, top_k,
